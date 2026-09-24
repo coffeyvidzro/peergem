@@ -12,6 +12,5 @@ module Auth
         methods: methods
       }, status: :created
     end
-
   end
 end

@@ -13,7 +13,7 @@ class UsersController < ApiController
     return if performed?
 
     current_session.user.update!(user_params)
-    render json: { user: user_json(current_session.user) }
+    render json: { user: UserSerializer.new(current_session.user).as_json }
   end
 
   def destroy
