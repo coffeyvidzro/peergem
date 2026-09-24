@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class User < ApplicationRecord
+  PUBLIC_ID_PREFIX = "usr_"
+
   has_secure_password validations: false
 
   has_many :sessions,          dependent: :destroy
@@ -18,6 +20,7 @@ class User < ApplicationRecord
 
   def confirmed? = confirmed_at.present?
   def disabled?  = disabled_at.present?
+  def public_id  = "#{PUBLIC_ID_PREFIX}#{id}"
 
   def confirm!
     update!(confirmed_at: Time.current)
@@ -25,5 +28,12 @@ class User < ApplicationRecord
 
   def disable!
     update!(disabled_at: Time.current)
+  end
+
+  def deactivate!
+    transaction do
+      disable!
+      sessions.active.update_all(revoked_at: Time.current)
+    end
   end
 end

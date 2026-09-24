@@ -43,7 +43,18 @@ module Auth
         token: token,
         token_type: "Bearer",
         expires_at: session.expires_at.iso8601,
-        user: { id: user.id, email: user.email, confirmed: user.confirmed? }
+        user: user_json(user)
+      }
+    end
+
+    def user_json(user)
+      {
+        id: user.public_id,
+        email: user.email,
+        email_verified: user.confirmed?,
+        has_password: user.password_digest.present?,
+        name: user.name,
+        created_at: user.created_at.iso8601
       }
     end
 

@@ -41,3 +41,17 @@ Authorization: Bearer pgs_<opaque-token>
 | `GET` | `/sessions/:id` | Get one active or historical session owned by the user |
 | `DELETE` | `/sessions/:id` | Revoke one session |
 | `DELETE` | `/sessions` | Revoke every session belonging to the user |
+
+## User API
+
+The singular `/user` resource manages only the identity associated with the
+current bearer session. User public IDs are prefixed with `usr_`; the underlying
+identity remains separate from merchant membership and financial records.
+Deactivating an identity prevents future sign-in and revokes all of its active
+sessions without deleting the record.
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/user` | Retrieve the authenticated user's profile |
+| `PATCH` | `/user` | Update the authenticated user's display name |
+| `DELETE` | `/user` | Safely deactivate the authenticated account |

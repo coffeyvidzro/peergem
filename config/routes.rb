@@ -13,6 +13,9 @@ Rails.application.routes.draw do
   resources :sessions, only: %i[index show destroy] do
     delete :destroy_all, on: :collection, path: ""
   end
+  get "user", to: "users#show"
+  patch "user", to: "users#update"
+  delete "user", to: "users#destroy"
 
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
 
