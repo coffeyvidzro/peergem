@@ -9,7 +9,7 @@ database_path = ENV.fetch(
   Rails.root.join("vendor", "geoip", "GeoLite2-City.mmdb").to_s
 )
 
-Rails.application.config.x[:geoip] ||= ActiveSupport::OrderedOptions.new
+Rails.application.config.x.geoip ||= ActiveSupport::OrderedOptions.new
 Rails.application.config.x.geoip.database_path = database_path
 
 Rails.application.config.x.geoip.reader =

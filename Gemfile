@@ -50,7 +50,6 @@ gem "sentry-sidekiq", "~> 7.0.0"
 
 # --- Auth ---
 gem "bcrypt", "~> 3.1.22"
-gem "devise", "~> 5.0.4"
 gem "pundit", "~> 2.5.2"
 gem "rack-attack", "~> 6.8.0"
 

@@ -27,5 +27,5 @@ AvaTax.configure do |config|
   config.log_request_and_response_info = false
 end
 
-Rails.application.config.x[:avatax] ||= ActiveSupport::OrderedOptions.new
+Rails.application.config.x.avatax ||= ActiveSupport::OrderedOptions.new
 Rails.application.config.x.avatax.client = AvaTax::Client.new
