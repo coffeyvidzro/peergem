@@ -1,0 +1,33 @@
+<architecture_context>
+  <platform_identity>
+    <name>PeerGem</name>
+    <type>Merchant of Record (MoR) &amp; Commerce Platform</type>
+    <jurisdiction>Ghana (BoG EPSP Act 987, Act 843, VAT Act 1151)</jurisdiction>
+  </platform_identity>
+
+  <services>
+    <service name="peer_gem_core" language="Ruby 4.0.7">
+      <framework>Ruby on Rails (Stateless API mode)</framework>
+      <responsibilities>
+        Developer APIs, Merchant Onboarding (Connect), Subscription Crons (Billing), Tax Orchestration (Tax), Risk Scoring (Radar).
+      </responsibilities>
+      <key_gems>
+        PostgreSQL, Redis, Sidekiq, RSpec, RuboCop, Brakeman, MaxMind GeoIP2, AASM, Redlock, Faraday, Lograge, OkComputer, Sentry
+      </key_gems>
+    </service>
+
+    <service name="peer_gem_switch" language="Go">
+      <responsibilities>
+        Low-latency payment switch connecting via IPsec VPN/TCP sockets to GhIPSS channels (GIP, MMI, gh-link, ACH).
+      </responsibilities>
+      <protocols>ISO 8583, TCP Sockets</protocols>
+    </service>
+  </services>
+
+  <domain_modules>
+    <module name="Payments &amp; Billing">Card Tokenization, MoMo Auto-debit pre-approval, PaymentIntent API</module>
+    <module name="Connect">Multi-tenant vendor management, application fee splitting, bulk GIP payouts</module>
+    <module name="Radar">Milliseconds pre-auth risk engine using MaxMind GeoIP2, BIN checks, MSISDN lookup</module>
+    <module name="Tax">Ghana VAT Act 1151 decoupled calculation (15% VAT + 2.5% NHIL + 2.5% GETFund = 20%)</module>
+  </domain_modules>
+</architecture_context>
