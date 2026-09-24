@@ -54,7 +54,7 @@ jobs:
         run: bin/rails db:prepare
 
       - name: Run specs
-        run: bin/rspec
+        run: bin/rspec --backtrace
 
   scan_ruby:
     runs-on: ubuntu-latest
