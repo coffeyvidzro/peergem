@@ -3,6 +3,10 @@ local:
   service: Disk
   root: <%= Rails.root.join("storage") %>
 
+spec:
+  service: Disk
+  root: <%= Rails.root.join("tmp/storage") %>
+
 # MinIO for development
 minio:
   service: S3
