@@ -2,8 +2,20 @@
 
 module Users
   class Deactivate
-    def self.call(user:, ip_address: nil, user_agent: nil)
+    ConfirmationRequiredError = Class.new(StandardError)
+    ReauthenticationRequiredError = Class.new(StandardError)
+    MerchantOwnershipRequiredError = Class.new(StandardError)
+
+    def self.call(user:, confirmation:, password: nil, ip_address: nil, user_agent: nil)
+      raise ConfirmationRequiredError unless confirmation == "DEACTIVATE"
+      raise ReauthenticationRequiredError if user.password_digest.present? && !user.authenticate(password)
+
       user.transaction do
+        sole_owner = user.merchant_memberships.active.where(role: "owner").any? do |membership|
+          !membership.merchant.merchant_memberships.active.where(role: "owner").where.not(user: user).exists?
+        end
+        raise MerchantOwnershipRequiredError if sole_owner
+
         user.disable!
         Sessions::RevokeAll.call(user: user, ip_address: ip_address, user_agent: user_agent)
         Security::Events.record(

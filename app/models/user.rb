@@ -8,6 +8,9 @@ class User < ApplicationRecord
   has_many :sessions,          dependent: :destroy
   has_many :auth_transactions, dependent: :destroy
   has_many :security_events,   dependent: :nullify
+  has_many :merchant_memberships, dependent: :destroy
+  has_many :merchants, through: :merchant_memberships
+  has_many :merchant_invitations, foreign_key: :invited_by_id, inverse_of: :invited_by, dependent: :restrict_with_error
 
   normalizes :email, with: ->(e) { e.strip.downcase }
 

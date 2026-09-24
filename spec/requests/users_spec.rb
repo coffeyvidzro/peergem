@@ -43,7 +43,7 @@ RSpec.describe "User profile" do
 
   describe "DELETE /user" do
     it "deactivates the identity and revokes all of its sessions without deleting it" do
-      delete "/user", headers: headers
+      delete "/user", params: { confirmation: "DEACTIVATE", password: "a-secure-password" }, headers: headers
 
       expect(response).to have_http_status(:no_content)
       expect(user.reload).to be_disabled

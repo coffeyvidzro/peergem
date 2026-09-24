@@ -1,9 +1,13 @@
 # frozen_string_literal: true
 
 class ApiController < ActionController::API
+  include Pundit::Authorization
+
   rescue_from ActiveRecord::RecordNotFound, with: :not_found
   rescue_from ActiveRecord::RecordInvalid, with: :record_invalid
+  rescue_from ActiveRecord::RecordNotUnique, with: :record_not_unique
   rescue_from ActionController::ParameterMissing, with: :bad_request
+  rescue_from Pundit::NotAuthorizedError, with: :forbidden
 
   private
 
@@ -20,6 +24,15 @@ class ApiController < ActionController::API
     render json: { error: { code: "unauthorized", message: "A valid bearer token is required" } }, status: :unauthorized
   end
 
+  def pundit_user
+    current_session&.user
+  end
+
+  def forbidden
+    render json: { error: { code: "forbidden", message: "You are not authorized to perform this action" } },
+      status: :forbidden
+  end
+
   def not_found
     render json: { error: { code: "not_found", message: "Resource was not found" } }, status: :not_found
   end
@@ -32,5 +45,9 @@ class ApiController < ActionController::API
     render json: {
       error: { code: "invalid_request", message: error.record.errors.full_messages.to_sentence }
     }, status: :unprocessable_content
+  end
+
+  def record_not_unique
+    render json: { error: { code: "conflict", message: "Resource already exists" } }, status: :conflict
   end
 end

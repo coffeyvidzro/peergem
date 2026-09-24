@@ -16,6 +16,7 @@ module Auth
 
     def enroll
       return if performed?
+      return password_already_enrolled if current_session.user.password_digest.present?
 
       current_session.user.update!(password_params)
       render json: { message: "Password enrolled" }
@@ -62,6 +63,12 @@ module Auth
 
     def invalid_code
       render json: { error: { code: "invalid_code", message: "The code is invalid or expired" } }, status: :unprocessable_content
+    end
+
+    def password_already_enrolled
+      render json: {
+        error: { code: "password_already_enrolled", message: "Use password reset to replace an existing password" }
+      }, status: :conflict
     end
   end
 end
