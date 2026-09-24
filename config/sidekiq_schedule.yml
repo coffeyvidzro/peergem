@@ -3,3 +3,9 @@ identity_cleanup:
   class: IdentityCleanupJob
   queue: low
   description: Remove expired identity records beyond their retention windows
+
+geoip_refresh:
+  cron: "0 4 * * 2" # every Tuesday at 04:00 UTC
+  class: "GeoipRefreshJob"
+  queue: default
+  description: "Refresh MaxMind GeoLite2-City database"

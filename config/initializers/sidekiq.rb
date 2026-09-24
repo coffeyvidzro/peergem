@@ -20,4 +20,4 @@ end
 
 # Sidekiq uniqueness is not financial idempotency. Enforce payment and wallet
 # deduplication with PostgreSQL constraints and transactional application logic.
-Sidekiq.default_job_options = { "backtrace" => 10, "retry" => 10 }
+Sidekiq.default_job_options = { "backtrace" => 10, "retry" => 5 }

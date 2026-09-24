@@ -14,14 +14,18 @@ AvaTax.configure do |config|
   config.endpoint = endpoint
   config.username = username
   config.password = password
+
+  config.response_big_decimal_conversion = true
   config.connection_options = {
     request: {
-      open_timeout: ENV.fetch("AVATAX_OPEN_TIMEOUT", 2).to_f,
-      timeout: ENV.fetch("AVATAX_READ_TIMEOUT", 10).to_f
+      open_timeout: 2,
+      timeout: 5
     }
   }
+
   config.logger = false
   config.log_request_and_response_info = false
 end
 
+Rails.application.config.x[:avatax] ||= ActiveSupport::OrderedOptions.new
 Rails.application.config.x.avatax.client = AvaTax::Client.new
