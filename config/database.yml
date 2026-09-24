@@ -2,9 +2,8 @@ default: &default
   adapter: postgresql
   encoding: unicode
   pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
-  host: <%= ENV.fetch("DATABASE_HOST", "localhost") %>
-  port: <%= ENV.fetch("DATABASE_PORT", 5432) %>
-  username: <%= ENV.fetch("DATABASE_USERNAME", "peergem") %>
+  host: postgres
+  username: peergem
   password: <%= ENV["DATABASE_PASSWORD"] %>
 
 development:
@@ -17,5 +16,4 @@ test:
 
 production:
   <<: *default
-  url: <%= ENV["DATABASE_URL"] %>
-  database: <%= ENV.fetch("DATABASE_NAME", "peergem_production") %>
+  database: peergem_production
