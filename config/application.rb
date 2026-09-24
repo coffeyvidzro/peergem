@@ -38,6 +38,10 @@ module Peergem
 
     config.x.redis_url = ENV.fetch("REDIS_URL", "redis://redis:6379/0")
 
+    # Sidekiq is the single Active Job backend in every deployed environment.
+    # Tests override this with the test adapter so jobs remain deterministic.
+    config.active_job.queue_adapter = :sidekiq
+
     # Don't generate system test files.
     config.generators.system_tests = nil
   end

@@ -20,6 +20,7 @@ class RedisHealthCheck < OkComputer::Check
 end
 
 OkComputer::Registry.register "redis", RedisHealthCheck.new
+OkComputer::Registry.register "database", OkComputer::ActiveRecordCheck.new
 
 if Rails.env.production? || Rails.env.staging?
   OkComputer.require_authentication(

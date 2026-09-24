@@ -26,7 +26,13 @@ Rails.application.configure do
   end
 
   # Change to :null_store to avoid any caching.
-  config.cache_store = :memory_store
+  config.cache_store = :redis_cache_store, {
+    url: Rails.application.config.x.redis_url,
+    namespace: "peergem:cache",
+    error_handler: ->(method:, returning:, exception:) {
+      Rails.error.report(exception, handled: true, context: { redis_cache_method: method })
+    }
+  }
 
   # Store uploaded files on the local file system (see config/storage.yml for options).
   config.active_storage.service = :minio
@@ -39,6 +45,7 @@ Rails.application.configure do
 
   # Set localhost to be used by links generated in mailer templates.
   config.action_mailer.default_url_options = { host: "localhost", port: 3000 }
+  config.action_mailer.delivery_method = :letter_opener if defined?(LetterOpener)
 
   # Print deprecation notices to the Rails logger.
   config.active_support.deprecation = :log
