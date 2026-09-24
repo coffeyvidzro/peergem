@@ -7,7 +7,7 @@ class User < ApplicationRecord
 
   has_many :sessions,          dependent: :destroy
   has_many :auth_transactions, dependent: :destroy
-  has_many :security_events, dependent: :nullify
+  has_many :security_events,   dependent: :nullify
 
   normalizes :email, with: ->(e) { e.strip.downcase }
 
@@ -29,17 +29,5 @@ class User < ApplicationRecord
 
   def disable!
     update!(disabled_at: Time.current)
-  end
-
-    def active_for_authentication?
-    super && disabled_at.nil? && email_verified?
-  end
-
-  def inactive_message
-    disabled_at? ? :disabled : super
-  end
-
-  def email_verified?
-    confirmed_at.present?
   end
 end

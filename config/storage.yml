@@ -11,8 +11,10 @@ spec:
 minio:
   service: S3
   endpoint: <%= ENV.fetch("MINIO_ENDPOINT", "http://127.0.0.1:9000") %>
-  access_key_id: <%= ENV["MINIO_ACCESS_KEY"] %>
-  secret_access_key: <%= ENV["MINIO_SECRET_KEY"] %>
+  # Explicit local defaults prevent the AWS SDK from probing cloud instance
+  # metadata when development credentials have not been configured.
+  access_key_id: <%= ENV.fetch("MINIO_ACCESS_KEY", "minioadmin") %>
+  secret_access_key: <%= ENV.fetch("MINIO_SECRET_KEY", "minioadmin") %>
   region: us-east-1
   bucket: <%= ENV.fetch("MINIO_BUCKET", "peergem-development") %>
   force_path_style: true

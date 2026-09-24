@@ -1,26 +1,26 @@
 # frozen_string_literal: true
 
-class UsersController < ApplicationController
-  before_action :authenticate_account!
-  rescue_from Users::Deactivate::ConfirmationRequiredError, with: :render_confirmation_required
-  rescue_from Users::Deactivate::ReauthenticationRequiredError, with: :render_reauthentication_required
-  rescue_from Users::Deactivate::MerchantOwnershipRequiredError, with: :render_merchant_ownership_required
+class UsersController < ApiController
+  before_action :require_session!
 
   def show
-    render_user
+    return if performed?
+
+    render json: { user: UserSerializer.new(current_session.user).as_json }
   end
 
   def update
-    Users::UpdateProfile.call(user: Current.user, name: user_params.fetch(:name))
-    render_user
+    return if performed?
+
+    current_session.user.update!(user_params)
+    render json: { user: UserSerializer.new(current_session.user).as_json }
   end
 
   def destroy
+    return if performed?
+
     Users::Deactivate.call(
-      user: Current.user,
-      session: Current.auth_session,
-      confirmation: params.expect(:confirmation),
-      password: params[:password],
+      user: current_session.user,
       ip_address: request.remote_ip,
       user_agent: request.user_agent
     )
@@ -30,18 +30,6 @@ class UsersController < ApplicationController
   private
 
   def user_params
-    params.expect(user: [ :name ])
-  end
-
-  def render_user
-    render json: { user: UserSerializer.call(Current.user) }
-  end
-
-  def render_confirmation_required
-    render json: { error: "confirmation_required" }, status: :unprocessable_content
-  end
-
-  def render_reauthentication_required
-    render json: { error: "reauthentication_required" }, status: :forbidden
+    params.permit(:name)
   end
 end

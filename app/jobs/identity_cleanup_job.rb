@@ -19,7 +19,7 @@ class IdentityCleanupJob < ApplicationJob
       .where(state: %w[authenticated expired])
       .where("updated_at < ?", auth_cutoff)
       .delete_all
-    deleted_sessions = AuthSession
+    deleted_sessions = Session
       .where("created_at < ? AND (revoked_at IS NOT NULL OR expires_at < ?)", session_cutoff, now)
       .delete_all
     deleted_invitations = MerchantInvitation
@@ -30,7 +30,7 @@ class IdentityCleanupJob < ApplicationJob
     {
       auth_challenges: deleted_challenges,
       auth_transactions: deleted_transactions,
-      auth_sessions: deleted_sessions,
+      sessions: deleted_sessions,
       merchant_invitations: deleted_invitations,
       security_events: deleted_security_events
     }

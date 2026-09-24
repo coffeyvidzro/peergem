@@ -18,4 +18,14 @@ RSpec.describe Auth::Passwords::Login do
     expect(described_class.call(transaction: transaction, password: "incorrect")).to be(false)
     expect(transaction.reload).to be_started
   end
+
+  it "performs a password hash check when the identity does not exist" do
+    transaction = AuthTransaction.create!(identifier: "missing@example.com")
+    password = instance_double(BCrypt::Password)
+    allow(BCrypt::Password).to receive(:new).and_return(password)
+    allow(password).to receive(:is_password?).with("incorrect").and_return(false)
+
+    expect(described_class.call(transaction: transaction, password: "incorrect")).to be(false)
+    expect(password).to have_received(:is_password?).with("incorrect")
+  end
 end

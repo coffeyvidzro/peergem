@@ -1,48 +1,55 @@
 # frozen_string_literal: true
 
-class SessionsController < ApplicationController
-  before_action :authenticate_account!
+class SessionsController < ApiController
+  before_action :require_session!
 
   def index
-    sessions = Current.user.sessions.active.order(created_at: :desc)
-    render json: {
-      sessions: sessions.map { |session| SessionSerializer.call(session, current_session: Current.auth_session) }
-    }
+    return if performed?
+
+    sessions = Sessions::List.call(user: current_session.user)
+    render json: { sessions: sessions.map { |session| SessionSerializer.new(session, current_session: current_session).as_json } }
   end
 
   def show
+    return if performed?
+
+    session = owned_session
     render json: {
-      session: SessionSerializer.call(
-        find_session,
-        current_session: Current.auth_session,
-        include_location: true
+      session: SessionSerializer.new(session, current_session: current_session).detailed_json(
+        location: Geoip::Locate.call(ip_address: session.ip_address)
       )
     }
   end
 
   def destroy
-    ::Sessions::Revoke.call(session: find_session)
+    return if performed?
+
+    session = owned_session
+    session.revoke!(ip_address: request.remote_ip, user_agent: request.user_agent) unless session.revoked?
     head :no_content
   end
 
   def destroy_all
-    now = Time.current
-    count = Current.user.sessions.where(revoked_at: nil).update_all(revoked_at: now)
-    Security::Events.record(
-      "session.revoked_all",
-      user: Current.user,
+    return if performed?
+
+    Sessions::RevokeAll.call(
+      user: current_session.user,
       ip_address: request.remote_ip,
-      user_agent: request.user_agent,
-      metadata: { count: count },
-      now: now
+      user_agent: request.user_agent
     )
     head :no_content
   end
 
   private
 
-  def find_session
-    id = AuthSession.id_from_public_id!(params.expect(:id))
-    Current.user.sessions.find(id)
+  def owned_session
+    session = Session.find_by_public_id!(params[:id])
+    raise ActiveRecord::RecordNotFound unless SessionPolicy.new(current_session.user, session).show?
+
+    session
+  end
+
+  def not_found
+    render json: { error: { code: "not_found", message: "Session was not found" } }, status: :not_found
   end
 end
