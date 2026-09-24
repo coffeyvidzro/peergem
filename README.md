@@ -27,3 +27,17 @@ seconds. The available endpoints are:
 | `POST` | `/auth/password/enroll` | Bearer | Add or replace the authenticated user's password |
 | `POST` | `/auth/password/forgot` | No | Start password recovery and send a code |
 | `POST` | `/auth/password/reset` | No | Verify a recovery code and replace the password |
+
+Sessions are opaque, revocable bearer credentials prefixed with `pgs_`. Send
+them in the `Authorization` header:
+
+```http
+Authorization: Bearer pgs_<opaque-token>
+```
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/sessions` | List all active sessions for the current user |
+| `GET` | `/sessions/:id` | Get one active or historical session owned by the user |
+| `DELETE` | `/sessions/:id` | Revoke one session |
+| `DELETE` | `/sessions` | Revoke every session belonging to the user |

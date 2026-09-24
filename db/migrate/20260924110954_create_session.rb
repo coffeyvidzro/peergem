@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class CreateSessions < ActiveRecord::Migration[8.1]
+class CreateSession < ActiveRecord::Migration[8.1]
   def change
     create_table :sessions, id: :uuid, default: -> { "gen_random_uuid()" } do |t|
       t.references  :user,           null: false, type: :uuid,

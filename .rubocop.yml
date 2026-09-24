@@ -22,3 +22,9 @@ AllCops:
 Lint/FloatComparison:
   Enabled: true
   Severity: error
+
+RSpec/ExampleLength:
+  Max: 12
+
+RSpec/MultipleExpectations:
+  Max: 5

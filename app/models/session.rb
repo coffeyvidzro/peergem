@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Session < ApplicationRecord
+  TOKEN_PREFIX = "pgs_"
+
   belongs_to :user
 
   ASSURANCES = %w[unknown password otp mfa].freeze
@@ -13,7 +15,7 @@ class Session < ApplicationRecord
   # Issues a new session. Returns [session, plaintext_token].
   # Only the SHA-256 hash of the token is persisted.
   def self.issue(user:, assurance: "password", ttl: 30.days, ip_address: nil, user_agent: nil)
-    plaintext = SecureRandom.urlsafe_base64(32)
+    plaintext = "#{TOKEN_PREFIX}#{SecureRandom.urlsafe_base64(32)}"
     session = create!(
       user:        user,
       token_hash:  Digest::SHA256.hexdigest(plaintext),
@@ -26,6 +28,8 @@ class Session < ApplicationRecord
   end
 
   def self.find_by_token(plaintext)
+    return unless plaintext&.start_with?(TOKEN_PREFIX)
+
     active.joins(:user).merge(User.active).find_by(token_hash: Digest::SHA256.hexdigest(plaintext))
   end
 
