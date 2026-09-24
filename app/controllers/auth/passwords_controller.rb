@@ -30,7 +30,7 @@ module Auth
       email = normalized_email
       user = User.active.find_by(email: email)
       transaction = AuthTransaction.create!(identifier: email, user: user)
-      issue_reset_challenge(transaction) if user
+      Auth::Challenges::Issue.call(transaction: transaction, purpose: "password_reset") if user
 
       render json: { transaction_id: transaction.id, message: "If the account exists, a recovery code has been sent" }, status: :accepted
     end
@@ -47,7 +47,7 @@ module Auth
         transaction.update!(selected_method: "password")
         transaction.require_password!
         transaction.authenticate!
-        user.sessions.active.update_all(revoked_at: Time.current)
+        Sessions::RevokeAll.call(user: user)
       end
       render_session(user, assurance: "password")
     rescue ActiveRecord::RecordInvalid => error
@@ -60,17 +60,6 @@ module Auth
       password = params.require(:password)
       confirmation = params.require(:password_confirmation)
       { password: password, password_confirmation: confirmation }
-    end
-
-    def issue_reset_challenge(transaction)
-      code = format("%06d", SecureRandom.random_number(1_000_000))
-      transaction.auth_challenges.create!(
-        identifier: transaction.identifier,
-        purpose: "password_reset",
-        secret_hash: AuthChallenge.digest(code),
-        expires_at: AuthChallenge::OTP_TTL.from_now
-      )
-      AuthMailer.password_reset(email: transaction.identifier, code: code).deliver_later
     end
 
     def invalid_credentials

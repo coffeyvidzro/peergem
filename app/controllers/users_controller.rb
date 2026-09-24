@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
-class UsersController < Auth::BaseController
+class UsersController < ApiController
   before_action :require_session!
 
   def show
     return if performed?
 
-    render json: { user: user_json(current_session.user) }
+    render json: { user: UserSerializer.new(current_session.user).as_json }
   end
 
   def update
@@ -19,7 +19,7 @@ class UsersController < Auth::BaseController
   def destroy
     return if performed?
 
-    current_session.user.deactivate!
+    Users::Deactivate.call(user: current_session.user)
     head :no_content
   end
 

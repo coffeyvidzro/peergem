@@ -6,7 +6,7 @@ module Auth
       transaction = transaction!
       return conflict("OTP has already been sent") unless transaction.started?
 
-      challenge = issue_challenge(transaction, "email_otp")
+      challenge = Auth::Challenges::Issue.call(transaction: transaction, purpose: "email_otp")
       transaction.update!(selected_method: "otp")
       transaction.send_otp!
       render_challenge(challenge, :created)
@@ -18,7 +18,7 @@ module Auth
       return cooldown(challenge) if challenge.resend_available_at.future?
 
       challenge.consume! unless challenge.consumed?
-      render_challenge(issue_challenge(transaction, "email_otp"), :ok)
+      render_challenge(Auth::Challenges::Issue.call(transaction: transaction, purpose: "email_otp"), :ok)
     end
 
     def verify
@@ -38,18 +38,6 @@ module Auth
     end
 
     private
-
-    def issue_challenge(transaction, purpose)
-      code = format("%06d", SecureRandom.random_number(1_000_000))
-      challenge = transaction.auth_challenges.create!(
-        identifier: transaction.identifier,
-        purpose: purpose,
-        secret_hash: AuthChallenge.digest(code),
-        expires_at: AuthChallenge::OTP_TTL.from_now
-      )
-      AuthMailer.otp(email: transaction.identifier, code: code).deliver_later
-      challenge
-    end
 
     def render_challenge(challenge, status)
       render json: {
