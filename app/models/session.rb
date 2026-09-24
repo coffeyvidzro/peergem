@@ -22,11 +22,11 @@ class Session < ApplicationRecord
       ip_address:  ip_address,
       user_agent:  user_agent
     )
-    [session, plaintext]
+    [ session, plaintext ]
   end
 
   def self.find_by_token(plaintext)
-    active.find_by(token_hash: Digest::SHA256.hexdigest(plaintext))
+    active.joins(:user).merge(User.active).find_by(token_hash: Digest::SHA256.hexdigest(plaintext))
   end
 
   def revoked? = revoked_at.present?
