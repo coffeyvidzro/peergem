@@ -89,4 +89,17 @@ RSpec.describe "Merchants and memberships" do
     expect(response).to have_http_status(:forbidden)
     expect(merchant.merchant_memberships.exists?(user: stranger)).to be(false)
   end
+
+  it "rejects invitations to disposable email providers" do
+    merchant = create_merchant
+
+    expect {
+      post "/merchants/#{merchant.public_id}/invitations", params: {
+        invitation: { email: "customer@0-mail.com", role: "member" }
+      }, headers: owner_headers
+    }.not_to change(MerchantInvitation, :count)
+
+    expect(response).to have_http_status(:unprocessable_content)
+    expect(response.parsed_body.dig("error", "message")).to include("must not use a disposable email provider")
+  end
 end

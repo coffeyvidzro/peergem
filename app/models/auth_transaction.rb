@@ -11,6 +11,7 @@ class AuthTransaction < ApplicationRecord
 
   validates :identifier, presence: true
   validates :identifier, format: { with: URI::MailTo::EMAIL_REGEXP }
+  validates :identifier, disposable_email: true
   validates :state,           inclusion: { in: STATES }
   validates :selected_method, inclusion: { in: METHODS }, allow_nil: true
 

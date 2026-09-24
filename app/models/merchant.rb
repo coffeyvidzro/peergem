@@ -13,6 +13,7 @@ class Merchant < ApplicationRecord
   has_one :account, dependent: :destroy
 
   validates :name, :slug, :country_code, :status, :account_type, :timezone, presence: true
+  validates :email, format: { with: URI::MailTo::EMAIL_REGEXP }, disposable_email: true, allow_blank: true
   validates :slug, uniqueness: { case_sensitive: false }, format: { with: /\A[a-z0-9]+(?:-[a-z0-9]+)*\z/ }
   validates :country_code, length: { is: 2 }
   validates :status, inclusion: { in: STATUSES }

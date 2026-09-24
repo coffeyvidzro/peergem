@@ -10,6 +10,7 @@ class MerchantInvitation < ApplicationRecord
   belongs_to :invited_by, class_name: "User"
 
   validates :email, :token_digest, :expires_at, presence: true
+  validates :email, format: { with: URI::MailTo::EMAIL_REGEXP }, disposable_email: true
   validates :role, inclusion: { in: %w[admin member] }
   validates :email, uniqueness: {
     scope: :merchant_id,

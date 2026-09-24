@@ -9,6 +9,7 @@ class AuthChallenge < ApplicationRecord
   PURPOSES = %w[email_otp email_verification password_reset magic_link].freeze
 
   validates :identifier,  presence: true
+  validates :identifier,  disposable_email: true
   validates :secret_hash, presence: true
   validates :purpose,     inclusion: { in: PURPOSES }
 

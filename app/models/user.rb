@@ -18,6 +18,7 @@ class User < ApplicationRecord
 
   validates :email, presence: true, uniqueness: { case_sensitive: false }
   validates :email, format: { with: URI::MailTo::EMAIL_REGEXP }
+  validates :email, disposable_email: true
   validates :password, length: { minimum: 12, maximum: 72 }, allow_nil: true
 
   scope :active, -> { where(disabled_at: nil) }

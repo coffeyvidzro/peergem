@@ -15,6 +15,15 @@ RSpec.describe "Authentication" do
         "methods" => %w[email_otp password]
       )
     end
+
+    it "rejects disposable email providers before creating an authentication transaction" do
+      expect {
+        post "/auth/start", params: { email: "customer@0-mail.com" }
+      }.not_to change(AuthTransaction, :count)
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(response.parsed_body.dig("error", "message")).to include("must not use a disposable email provider")
+    end
   end
 
   describe "POST /auth/password/login" do
