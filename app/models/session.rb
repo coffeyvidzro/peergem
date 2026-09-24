@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
 class Session < ApplicationRecord
+  PUBLIC_ID_PREFIX = "ses_"
+  TOKEN_PREFIX = "pgs_"
+
   belongs_to :user
 
   ASSURANCES = %w[unknown password otp mfa].freeze
@@ -13,7 +16,7 @@ class Session < ApplicationRecord
   # Issues a new session. Returns [session, plaintext_token].
   # Only the SHA-256 hash of the token is persisted.
   def self.issue(user:, assurance: "password", ttl: 30.days, ip_address: nil, user_agent: nil)
-    plaintext = SecureRandom.urlsafe_base64(32)
+    plaintext = "#{TOKEN_PREFIX}#{SecureRandom.urlsafe_base64(32)}"
     session = create!(
       user:        user,
       token_hash:  Digest::SHA256.hexdigest(plaintext),
@@ -22,16 +25,26 @@ class Session < ApplicationRecord
       ip_address:  ip_address,
       user_agent:  user_agent
     )
-    [session, plaintext]
+    [ session, plaintext ]
   end
 
   def self.find_by_token(plaintext)
-    active.find_by(token_hash: Digest::SHA256.hexdigest(plaintext))
+    return unless plaintext&.start_with?(TOKEN_PREFIX)
+
+    active.joins(:user).merge(User.active).find_by(token_hash: Digest::SHA256.hexdigest(plaintext))
+  end
+
+  def self.find_by_public_id!(public_id)
+    id = public_id.to_s.delete_prefix(PUBLIC_ID_PREFIX) if public_id.to_s.start_with?(PUBLIC_ID_PREFIX)
+    raise ActiveRecord::RecordNotFound unless id&.match?(/\A[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}\z/i)
+
+    find(id)
   end
 
   def revoked? = revoked_at.present?
   def expired? = expires_at <= Time.current
   def active?  = !revoked? && !expired?
+  def public_id = "#{PUBLIC_ID_PREFIX}#{id}"
 
   def revoke!
     update!(revoked_at: Time.current)
