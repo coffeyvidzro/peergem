@@ -29,5 +29,4 @@ class User < ApplicationRecord
   def disable!
     update!(disabled_at: Time.current)
   end
-
 end

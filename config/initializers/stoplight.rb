@@ -16,7 +16,7 @@ Stoplight.configure do |config|
     Stoplight::DataStore::Redis.new(stoplight_pool)
   end
 
-  config.notifiers = [Stoplight::Notifier::Logger.new(Rails.logger)]
+  config.notifiers = [ Stoplight::Notifier::Logger.new(Rails.logger) ]
 
   config.tracked_errors = [
     Faraday::Error,

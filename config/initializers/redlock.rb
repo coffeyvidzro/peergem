@@ -10,7 +10,7 @@ redlock_pool = ConnectionPool.new(
 end
 
 Rails.application.config.x.redlock = Redlock::Client.new(
-  [redlock_pool],
+  [ redlock_pool ],
   retry_count: 3,
   retry_delay: 200,
   retry_jitter: 100
