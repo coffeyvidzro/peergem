@@ -4,6 +4,11 @@
 inherit_gem:
   rubocop-rails-omakase: rubocop.yml
 
+plugins:
+  - rubocop-performance
+  - rubocop-rails
+  - rubocop-rspec
+
 AllCops:
   TargetRubyVersion: 4.0
   Exclude:
@@ -14,11 +19,12 @@ AllCops:
     - "tmp/**/*"
     - "node_modules/**/*"
 
-RSpec:
-  Enabled: true
-  Include:
-    - "spec/**/*"
-
 Lint/FloatComparison:
   Enabled: true
   Severity: error
+
+RSpec/ExampleLength:
+  Max: 12
+
+RSpec/MultipleExpectations:
+  Max: 5

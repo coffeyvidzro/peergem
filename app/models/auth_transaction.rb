@@ -10,6 +10,7 @@ class AuthTransaction < ApplicationRecord
   METHODS = %w[otp password].freeze
 
   validates :identifier, presence: true
+  validates :identifier, format: { with: URI::MailTo::EMAIL_REGEXP }
   validates :state,           inclusion: { in: STATES }
   validates :selected_method, inclusion: { in: METHODS }, allow_nil: true
 
@@ -35,15 +36,15 @@ class AuthTransaction < ApplicationRecord
     end
 
     event :require_password do
-      transitions from: :otp_verified, to: :password_required
+      transitions from: [ :started, :otp_verified ], to: :password_required
     end
 
     event :authenticate do
-      transitions from: [:otp_verified, :password_required], to: :authenticated
+      transitions from: [ :otp_verified, :password_required ], to: :authenticated
     end
 
     event :expire do
-      transitions from: [:started, :otp_sent, :otp_verified, :password_required], to: :expired
+      transitions from: [ :started, :otp_sent, :otp_verified, :password_required ], to: :expired
     end
   end
 
