@@ -3,14 +3,13 @@
 module Auth
   class TransactionsController < BaseController
     def create
-      email = normalized_email
-      transaction, methods = Auth::Start.call(email: email)
+      transaction, methods = ::Auth::Start.call(email: params.expect(:email), **request_context)
 
       render json: {
         transaction_id: transaction.id,
-        expires_at: transaction.expires_at.iso8601,
-        methods: methods
-      }, status: :created
+        methods: methods,
+        expires_in: (transaction.expires_at - Time.current).ceil
+      }
     end
   end
 end

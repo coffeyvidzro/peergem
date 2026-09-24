@@ -1,43 +1,30 @@
 # frozen_string_literal: true
 
 class AuthChallenge < ApplicationRecord
-  OTP_TTL = 10.minutes
-  RESEND_COOLDOWN = 60.seconds
+  PURPOSES = %w[email_otp password_reset magic_link].freeze
 
-  belongs_to :auth_transaction
+  belongs_to :auth_transaction, optional: true
 
-  PURPOSES = %w[email_otp email_verification password_reset magic_link].freeze
-
-  validates :identifier,  presence: true
-  validates :secret_hash, presence: true
-  validates :purpose,     inclusion: { in: PURPOSES }
+  validates :identifier, :secret_hash, :expires_at, presence: true
+  validates :purpose, inclusion: { in: PURPOSES }
+  validates :attempts, numericality: { greater_than_or_equal_to: 0 }
+  validates :max_attempts, numericality: { greater_than: 0 }
+  validate :expiry_follows_creation
+  validate :consumption_follows_creation
 
   scope :active, -> { where(consumed_at: nil).where("expires_at > ?", Time.current) }
 
-  def consumed?  = consumed_at.present?
-  def expired?   = expires_at <= Time.current
-  def exhausted? = attempts >= max_attempts
+  private
 
-  def consume!
-    update!(consumed_at: Time.current)
+  def expiry_follows_creation
+    return if expires_at.blank? || created_at.blank? || expires_at > created_at
+
+    errors.add(:expires_at, "must be after creation")
   end
 
-  def increment_attempts!
-    increment!(:attempts)
-  end
+  def consumption_follows_creation
+    return if consumed_at.blank? || created_at.blank? || consumed_at >= created_at
 
-  def verify(code)
-    return false if consumed? || expired? || exhausted?
-
-    increment_attempts!
-    ActiveSupport::SecurityUtils.secure_compare(secret_hash, self.class.digest(code))
-  end
-
-  def resend_available_at
-    created_at + RESEND_COOLDOWN
-  end
-
-  def self.digest(code)
-    OpenSSL::HMAC.hexdigest("SHA256", Rails.application.secret_key_base, code.to_s)
+    errors.add(:consumed_at, "must not be before creation")
   end
 end

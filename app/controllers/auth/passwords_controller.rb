@@ -2,66 +2,77 @@
 
 module Auth
   class PasswordsController < BaseController
-    before_action :require_session!, only: :enroll
+    before_action :authenticate_account!, only: :enroll
+    rescue_from ::Auth::Passwords::Login::InvalidCredentialsError, with: :render_invalid_credentials
+    rescue_from ::Auth::EmailCodes::Verify::InvalidCodeError, with: :render_invalid_code
 
     def login
-      transaction = transaction!
-      return invalid_state unless transaction.started?
+      result = ::Auth::Passwords::Login.call(
+        transaction: auth_transaction,
+        password: params.expect(:password),
+        **request_context
+      )
 
-      user = Auth::Passwords::Login.call(transaction: transaction, password: params.require(:password))
-      return invalid_credentials unless user
-
-      render_session(user, assurance: "password")
+      render json: {
+        user: UserSerializer.call(result.session.user),
+        session: SessionSerializer.call(
+          result.session,
+          current_session: result.session,
+          token: result.token
+        )
+      }
     end
 
     def enroll
-      return if performed?
-
-      current_session.user.update!(password_params)
-      render json: { message: "Password enrolled" }
-    rescue ActiveRecord::RecordInvalid => error
-      render json: { error: { code: "invalid_password", message: error.record.errors.full_messages.to_sentence } }, status: :unprocessable_content
+      ::Users::EnrollPassword.call(
+        user: Current.user,
+        password: params.expect(:password),
+        **request_context
+      )
+      render json: { message: "Password created successfully", has_password: true }
     end
 
     def forgot
-      email = normalized_email
-      transaction = Auth::Passwords::Forgot.call(email: email)
-
-      render json: { transaction_id: transaction.id, message: "If the account exists, a recovery code has been sent" }, status: :accepted
+      transaction, = ::Auth::Start.call(email: params.expect(:email), **request_context)
+      result = ::Auth::EmailCodes::Send.call(
+        transaction: transaction,
+        purpose: "password_reset",
+        **request_context
+      )
+      render json: {
+        transaction_id: transaction.id,
+        expires_in: (result.challenge.expires_at - Time.current).ceil,
+        resend_after: result.resend_after
+      }
     end
 
     def reset
-      transaction = transaction!
-      user = Auth::Passwords::Reset.call(
-        transaction: transaction,
-        code: params.require(:code),
-        **password_params
+      result = ::Auth::EmailCodes::Verify.call(
+        transaction: auth_transaction,
+        code: params.expect(:code),
+        purpose: "password_reset",
+        create_user: false,
+        issue_session: false,
+        **request_context
       )
-      return invalid_code unless user
-
-      render_session(user, assurance: "password")
-    rescue ActiveRecord::RecordInvalid => error
-      render json: { error: { code: "invalid_password", message: error.record.errors.full_messages.to_sentence } }, status: :unprocessable_content
+      ::Users::EnrollPassword.call(
+        user: result.user,
+        password: params.expect(:password),
+        event_type: "user.password_reset",
+        **request_context
+      )
+      result.user.sessions.where(revoked_at: nil).update_all(revoked_at: Time.current)
+      render json: { message: "Password reset successfully", has_password: true }
     end
 
     private
 
-    def password_params
-      password = params.require(:password)
-      confirmation = params.require(:password_confirmation)
-      { password: password, password_confirmation: confirmation }
+    def render_invalid_credentials
+      render json: { error: "invalid_credentials" }, status: :unauthorized
     end
 
-    def invalid_credentials
-      render json: { error: { code: "invalid_credentials", message: "Email or password is incorrect" } }, status: :unauthorized
-    end
-
-    def invalid_state
-      render json: { error: { code: "invalid_state", message: "Password login is not available" } }, status: :conflict
-    end
-
-    def invalid_code
-      render json: { error: { code: "invalid_code", message: "The code is invalid or expired" } }, status: :unprocessable_content
+    def render_invalid_code
+      render json: { error: "invalid_code" }, status: :unauthorized
     end
   end
 end

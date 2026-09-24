@@ -1,13 +1,20 @@
 # frozen_string_literal: true
 
 class AuthMailer < ApplicationMailer
-  def otp(email:, code:)
-    @code = code
-    mail(to: email, subject: "Your PeerGem sign-in code")
+  def email_code
+    assign_code
+    mail(to: params.fetch(:identifier), subject: "Your PeerGem verification code")
   end
 
-  def password_reset(email:, code:)
-    @code = code
-    mail(to: email, subject: "Reset your PeerGem password")
+  def password_reset_code
+    assign_code
+    mail(to: params.fetch(:identifier), subject: "Reset your PeerGem password")
+  end
+
+  private
+
+  def assign_code
+    @code = params.fetch(:code)
+    @expires_in_minutes = params.fetch(:expires_in_minutes, 5)
   end
 end

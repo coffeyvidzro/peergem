@@ -1,56 +1,45 @@
 # frozen_string_literal: true
 
-class Session < ApplicationRecord
+class AuthSession < ApplicationRecord
+  self.table_name = "sessions"
+
   PUBLIC_ID_PREFIX = "ses_"
-  TOKEN_PREFIX = "pgs_"
+  UUID_PATTERN = /\A[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\z/i
+  ASSURANCE_LEVELS = %w[unknown password otp mfa].freeze
 
-  belongs_to :user
+  belongs_to :user, inverse_of: :sessions
 
-  ASSURANCES = %w[unknown password otp mfa].freeze
-
-  validates :token_hash, presence: true, uniqueness: true
-  validates :assurance,  inclusion: { in: ASSURANCES }
+  validates :token_hash, :expires_at, presence: true
+  validates :token_hash, uniqueness: true
+  validates :assurance, inclusion: { in: ASSURANCE_LEVELS }
+  validate :expiry_follows_creation
+  validate :revocation_follows_creation
 
   scope :active, -> { where(revoked_at: nil).where("expires_at > ?", Time.current) }
 
-  # Issues a new session. Returns [session, plaintext_token].
-  # Only the SHA-256 hash of the token is persisted.
-  def self.issue(user:, assurance: "password", ttl: 30.days, ip_address: nil, user_agent: nil)
-    plaintext = "#{TOKEN_PREFIX}#{SecureRandom.urlsafe_base64(32)}"
-    session = create!(
-      user:        user,
-      token_hash:  Digest::SHA256.hexdigest(plaintext),
-      assurance:   assurance,
-      expires_at:  ttl.from_now,
-      ip_address:  ip_address,
-      user_agent:  user_agent
-    )
-    [ session, plaintext ]
+  def self.id_from_public_id!(public_id)
+    value = public_id.to_s
+    id = value.delete_prefix(PUBLIC_ID_PREFIX)
+    raise ActiveRecord::RecordNotFound unless value.start_with?(PUBLIC_ID_PREFIX) && id.match?(UUID_PATTERN)
+
+    id
   end
 
-  def self.find_by_token(plaintext)
-    return unless plaintext&.start_with?(TOKEN_PREFIX)
-
-    active.joins(:user).merge(User.active).find_by(token_hash: Digest::SHA256.hexdigest(plaintext))
+  def public_id
+    "#{PUBLIC_ID_PREFIX}#{id}"
   end
 
-  def self.find_by_public_id!(public_id)
-    id = public_id.to_s.delete_prefix(PUBLIC_ID_PREFIX) if public_id.to_s.start_with?(PUBLIC_ID_PREFIX)
-    raise ActiveRecord::RecordNotFound unless id&.match?(/\A[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}\z/i)
+  private
 
-    find(id)
+  def expiry_follows_creation
+    return if expires_at.blank? || created_at.blank? || expires_at > created_at
+
+    errors.add(:expires_at, "must be after creation")
   end
 
-  def revoked? = revoked_at.present?
-  def expired? = expires_at <= Time.current
-  def active?  = !revoked? && !expired?
-  def public_id = "#{PUBLIC_ID_PREFIX}#{id}"
+  def revocation_follows_creation
+    return if revoked_at.blank? || created_at.blank? || revoked_at >= created_at
 
-  def revoke!
-    update!(revoked_at: Time.current)
-  end
-
-  def touch_seen!
-    update_column(:last_seen_at, Time.current)
+    errors.add(:revoked_at, "must not be before creation")
   end
 end
