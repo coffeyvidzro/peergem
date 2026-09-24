@@ -29,11 +29,4 @@ class User < ApplicationRecord
   def disable!
     update!(disabled_at: Time.current)
   end
-
-  def deactivate!
-    transaction do
-      disable!
-      sessions.active.update_all(revoked_at: Time.current)
-    end
-  end
 end

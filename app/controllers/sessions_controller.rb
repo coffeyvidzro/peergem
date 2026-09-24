@@ -1,13 +1,13 @@
 # frozen_string_literal: true
 
-class SessionsController < Auth::BaseController
+class SessionsController < ApiController
   before_action :require_session!
 
   def index
     return if performed?
 
-    sessions = current_session.user.sessions.active.order(created_at: :desc)
-    render json: { sessions: sessions.map { |session| session_summary_json(session) } }
+    sessions = Sessions::List.call(user: current_session.user)
+    render json: { sessions: sessions.map { |session| SessionSerializer.new(session, current_session: current_session).as_json } }
   end
 
   def show
@@ -15,9 +15,8 @@ class SessionsController < Auth::BaseController
 
     session = owned_session
     render json: {
-      session: session_summary_json(session).merge(
-        last_active_at: session.last_seen_at&.iso8601,
-        location: session_location(session)
+      session: SessionSerializer.new(session, current_session: current_session).detailed_json(
+        location: Geoip::Locate.call(ip_address: session.ip_address)
       )
     }
   end
@@ -33,7 +32,7 @@ class SessionsController < Auth::BaseController
   def destroy_all
     return if performed?
 
-    current_session.user.sessions.active.update_all(revoked_at: Time.current)
+    Sessions::RevokeAll.call(user: current_session.user)
     head :no_content
   end
 
@@ -41,30 +40,9 @@ class SessionsController < Auth::BaseController
 
   def owned_session
     session = Session.find_by_public_id!(params[:id])
-    raise ActiveRecord::RecordNotFound unless session.user_id == current_session.user_id
+    raise ActiveRecord::RecordNotFound unless SessionPolicy.new(current_session.user, session).show?
 
     session
-  end
-
-  def session_summary_json(session)
-    {
-      id: session.public_id,
-      is_current: session.id == current_session.id,
-      ip_address: session.ip_address&.to_s,
-      user_agent: session.user_agent,
-      expires_at: session.expires_at.iso8601,
-      created_at: session.created_at.iso8601
-    }
-  end
-
-  def session_location(session)
-    reader = Rails.application.config.x.geoip.reader
-    return unless reader && session.ip_address
-
-    result = reader.city(session.ip_address.to_s)
-    [ result.city.name, result.country.name ].compact_blank.join(", ").presence
-  rescue StandardError
-    nil
   end
 
   def not_found
