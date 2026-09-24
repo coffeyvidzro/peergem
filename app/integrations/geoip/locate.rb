@@ -1,8 +1,7 @@
 # frozen_string_literal: true
 
-module Integrations
-  module Geoip
-    class Locate
+module Geoip
+  class Locate
       def self.call(ip_address:)
         reader = Rails.application.config.x.geoip.reader
         return unless reader && ip_address
@@ -12,6 +11,5 @@ module Integrations
       rescue StandardError
         nil
       end
-    end
   end
 end

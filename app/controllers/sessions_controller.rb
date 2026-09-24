@@ -16,7 +16,7 @@ class SessionsController < ApiController
     session = owned_session
     render json: {
       session: SessionSerializer.new(session, current_session: current_session).detailed_json(
-        location: Integrations::Geoip::Locate.call(ip_address: session.ip_address)
+        location: Geoip::Locate.call(ip_address: session.ip_address)
       )
     }
   end
