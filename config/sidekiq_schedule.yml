@@ -1,0 +1,5 @@
+identity_cleanup:
+  cron: "17 3 * * *"
+  class: IdentityCleanupJob
+  queue: low
+  description: Remove expired identity records beyond their retention windows
