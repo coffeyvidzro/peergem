@@ -67,5 +67,4 @@ class MerchantMembershipsController < ApiController
       changes[:status] = attributes[:status] if attributes.key?(:status)
     end
   end
-
 end
