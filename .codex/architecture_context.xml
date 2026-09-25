@@ -1,33 +1,30 @@
-<architecture_context>
-  <platform_identity>
+<?xml version="1.0" encoding="UTF-8"?>
+<peer_gem_architecture>
+  <identity>
     <name>PeerGem</name>
-    <type>Merchant of Record (MoR) &amp; Commerce Platform</type>
-    <jurisdiction>Ghana (BoG EPSP Act 987, Act 843, VAT Act 1151)</jurisdiction>
-  </platform_identity>
+    <product>Developer-first Merchant of Record and commerce platform, beginning in Ghana.</product>
+    <business_model>Intended to manage the merchant-facing commerce lifecycle, collection obligations, fees, tax, refunds, and merchant payables rather than operate solely as a payment pass-through.</business_model>
+  </identity>
 
-  <services>
-    <service name="peer_gem_core" language="Ruby 4.0.7">
-      <framework>Ruby on Rails (Stateless API mode)</framework>
-      <responsibilities>
-        Developer APIs, Merchant Onboarding (Connect), Subscription Crons (Billing), Tax Orchestration (Tax), Risk Scoring (Radar).
-      </responsibilities>
-      <key_gems>
-        PostgreSQL, Redis, Sidekiq, RSpec, RuboCop, Brakeman, MaxMind GeoIP2, AASM, Redlock, Faraday, Lograge, OkComputer, Sentry
-      </key_gems>
-    </service>
+  <current_repository>
+    <runtime>Ruby 4.0.7, Rails 8.1, PostgreSQL, Redis, and Sidekiq.</runtime>
+    <api>JSON endpoints use ApiController, authorization and bearer authentication. Follow existing routes, policies, serializers, and tenant scoping.</api>
+    <ui>Rails also supports server-rendered ERB, Turbo, Stimulus, Tailwind, Propshaft, and importmap. Do not assume an API-only Rails application or introduce Node tooling without a task-specific reason.</ui>
+    <layout>Existing app/domains, app/models, app/controllers, app/policies, app/serializers, db/migrate, and spec directories define the current conventions.</layout>
+    <features>Identity, authentication, sessions, merchants, merchant memberships, merchant accounts, API keys, and security events are present. Inspect the current tree before treating any additional module as implemented.</features>
+    <data_caveat>The current Account model contains a mutable credit_balance field. This is not evidence that a production double-entry ledger exists or that the field is an authoritative financial balance.</data_caveat>
+  </current_repository>
 
-    <service name="peer_gem_switch" language="Go">
-      <responsibilities>
-        Low-latency payment switch connecting via IPsec VPN/TCP sockets to GhIPSS channels (GIP, MMI, gh-link, ACH).
-      </responsibilities>
-      <protocols>ISO 8583, TCP Sockets</protocols>
-    </service>
-  </services>
+  <target_architecture status="planned">
+    <ruby_application_core>Developer REST APIs, merchant and customer commerce, PaymentIntent orchestration, subscriptions and usage billing, Connect, Radar, and tax orchestration.</ruby_application_core>
+    <go_switch_core>Separate downstream Go service for high-concurrency payment execution and external bank and telecom integration. The exact supported networks, protocols, contracts, and deployment arrangements require explicit design and verification.</go_switch_core>
+    <boundary>Ruby may create durable financial instructions and present commerce state. Accepted instructions are not proof of collection. Authenticating external results, reconciling unknown outcomes, and assigning authoritative ledger ownership must precede live payment execution.</boundary>
+    <integrations>PostgreSQL, Redis, Sidekiq, RSpec, RuboCop, Brakeman, MaxMind GeoIP2, Lograge, AASM, Redlock, AWS SES, Cloudflare R2, Stoplight, OkComputer, Sentry, Faraday, and AvaTax are intended stack components. Verify presence and configuration before using a component.</integrations>
+  </target_architecture>
 
-  <domain_modules>
-    <module name="Payments &amp; Billing">Card Tokenization, MoMo Auto-debit pre-approval, PaymentIntent API</module>
-    <module name="Connect">Multi-tenant vendor management, application fee splitting, bulk GIP payouts</module>
-    <module name="Radar">Milliseconds pre-auth risk engine using MaxMind GeoIP2, BIN checks, MSISDN lookup</module>
-    <module name="Tax">Ghana VAT Act 1151 decoupled calculation (15% VAT + 2.5% NHIL + 2.5% GETFund = 20%)</module>
-  </domain_modules>
-</architecture_context>
+  <regulatory_context status="requirements-to-verify">
+    <item>Ghana payment-services licensing under Act 987 and applicable Bank of Ghana requirements are business planning constraints; do not assert a license has been granted.</item>
+    <item>Data protection, hosting, retention, and cross-border transfer requirements under Act 843 must be confirmed for the particular data and deployment. Do not infer a blanket statutory physical-hosting mandate.</item>
+    <item>Tax rates, taxable bases, exemptions, rounding, invoice requirements, and effective dates require authoritative verification. Do not hard-code an assumed universal combined VAT rate.</item>
+  </regulatory_context>
+</peer_gem_architecture>
