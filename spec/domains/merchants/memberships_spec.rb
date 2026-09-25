@@ -2,7 +2,7 @@
 
 require "rails_helper"
 
-RSpec.describe "Merchant membership operations" do
+RSpec.describe Merchants::Memberships::Update do
   let(:owner) { User.create!(email: "owner-memberships@example.com") }
   let(:merchant) do
     Merchants::Create.call(
