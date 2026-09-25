@@ -4,13 +4,16 @@ namespace :auth do
   post "email/resend", to: "email_challenges#resend"
   post "email/verify", to: "email_challenges#verify"
   post "password/login", to: "passwords#login"
-  post "password/enroll", to: "passwords#enroll"
   post "password/forgot", to: "passwords#forgot"
   post "password/reset", to: "passwords#reset"
+  post "password/change", to: "passwords#change"
 end
 
-resources :sessions, only: %i[index show destroy] do
-  delete :destroy_all, on: :collection, path: ""
-end
+get "sessions", to: "sessions#index"
+delete "sessions/others", to: "sessions#others"
+get "sessions/:id", to: "sessions#show"
+delete "sessions/:id", to: "sessions#destroy"
 
-resource :user, only: %i[show update destroy]
+get "user", to: "users#show"
+patch "user", to: "users#update"
+delete "user", to: "users#destroy"

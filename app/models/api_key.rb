@@ -2,7 +2,7 @@
 
 require "ipaddr"
 
-class ApiCredential < ApplicationRecord
+class ApiKey < ApplicationRecord
   PUBLIC_ID_PREFIX = "key_"
   TOKEN_PATTERN = /\Apgk_([0-9a-f]{24})_([A-Za-z0-9_-]{43})\z/
   SCOPES = %w[
@@ -12,7 +12,7 @@ class ApiCredential < ApplicationRecord
 
   belongs_to :merchant
   belongs_to :created_by, class_name: "User", optional: true
-  belongs_to :replaced_by, class_name: "ApiCredential", optional: true
+  belongs_to :replaced_by, class_name: "ApiKey", optional: true
 
   validates :name, :key_id, :secret_digest, presence: true
   validates :key_id, uniqueness: true, format: { with: /\A[0-9a-f]{24}\z/ }
@@ -53,23 +53,23 @@ class ApiCredential < ApplicationRecord
     return unless match
 
     key_id, secret = match.captures
-    credential = active.includes(:merchant).find_by(key_id: key_id)
-    return unless credential
-    return unless credential.merchant.status.in?(%w[onboarding active])
-    return unless ActiveSupport::SecurityUtils.secure_compare(credential.secret_digest, digest(secret))
+    api_key = active.includes(:merchant).find_by(key_id: key_id)
+    return unless api_key
+    return unless api_key.merchant.status.in?(%w[onboarding active])
+    return unless ActiveSupport::SecurityUtils.secure_compare(api_key.secret_digest, digest(secret))
 
-    unless credential.allows_ip?(ip_address)
+    unless api_key.allows_ip?(ip_address)
       Security::Events.record(
-        "api_credential.ip_rejected",
-        merchant: credential.merchant,
+        "api_key.ip_rejected",
+        merchant: api_key.merchant,
         ip_address: ip_address,
-        metadata: { api_credential_id: credential.public_id }
+        metadata: { api_key_id: api_key.public_id }
       )
       return
     end
 
-    credential.record_usage!(ip_address)
-    credential
+    api_key.record_usage!(ip_address)
+    api_key
   end
 
   def self.digest(secret)

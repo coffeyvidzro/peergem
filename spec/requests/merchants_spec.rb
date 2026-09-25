@@ -102,4 +102,31 @@ RSpec.describe "Merchants and memberships" do
     expect(response).to have_http_status(:unprocessable_content)
     expect(response.parsed_body.dig("error", "message")).to include("must not use a disposable email provider")
   end
+
+  it "lets a non-owner leave a merchant" do
+    merchant = create_merchant
+    member = User.create!(email: "leaving@example.com")
+    membership = merchant.merchant_memberships.create!(user: member, role: "member", joined_at: Time.current)
+    member_token = Session.issue(user: member).last
+
+    delete "/merchants/#{merchant.public_id}/membership",
+      headers: { "Authorization" => "Bearer #{member_token}" }
+
+    expect(response).to have_http_status(:no_content)
+    expect(MerchantMembership.exists?(membership.id)).to be(false)
+  end
+
+  it "resends an invitation by revoking and replacing its token" do
+    merchant = create_merchant
+    result = MerchantInvitations::Issue.call(
+      merchant: merchant, invited_by: owner, email: "invitee@example.com", role: "member"
+    )
+
+    post "/merchants/#{merchant.public_id}/invitations/#{result.invitation.public_id}/resend",
+      headers: owner_headers
+
+    expect(response).to have_http_status(:created)
+    expect(result.invitation.reload.revoked_at).to be_present
+    expect(response.parsed_body.dig("invitation", "token")).to start_with("pgi_")
+  end
 end

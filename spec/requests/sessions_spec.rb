@@ -52,12 +52,13 @@ RSpec.describe "Sessions" do
     end
   end
 
-  describe "DELETE /sessions" do
-    it "revokes all active sessions including the credential used for the request" do
-      delete "/sessions", headers: headers
+  describe "DELETE /sessions/others" do
+    it "revokes all other active sessions and preserves the current session" do
+      delete "/sessions/others", headers: headers
 
       expect(response).to have_http_status(:no_content)
-      expect(user.sessions.active).to be_empty
+      expect(current_session.reload).to be_revoked
+      expect(Session.find_by_token(token)).to be_present
     end
   end
 

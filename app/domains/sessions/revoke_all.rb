@@ -2,11 +2,13 @@
 
 module Sessions
   class RevokeAll
-    def self.call(user:, ip_address: nil, user_agent: nil)
+    def self.call(user:, except: nil, ip_address: nil, user_agent: nil)
       now = Time.current
-      count = user.sessions.active.update_all(revoked_at: now)
+      sessions = user.sessions.active
+      sessions = sessions.where.not(id: except.id) if except
+      count = sessions.update_all(revoked_at: now)
       Security::Events.record(
-        "session.revoked_all",
+        except ? "session.revoked_others" : "session.revoked_all",
         user: user,
         ip_address: ip_address,
         user_agent: user_agent,

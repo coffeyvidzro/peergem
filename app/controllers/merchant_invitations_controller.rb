@@ -53,6 +53,21 @@ class MerchantInvitationsController < ApiController
     render json: { membership: MerchantMembershipSerializer.call(membership) }, status: :created
   end
 
+  def resend
+    return if performed?
+
+    authorize merchant, :manage_members?
+    invitation = merchant.merchant_invitations.active.find(invitation_id)
+    authorize merchant, :manage_owners? if invitation.role == "admin"
+    result = MerchantInvitations::Resend.call(
+      invitation: invitation,
+      resent_by: current_session.user
+    )
+    render json: {
+      invitation: MerchantInvitationSerializer.call(result.invitation, token: result.token)
+    }, status: :created
+  end
+
   private
 
   def merchant
@@ -64,7 +79,7 @@ class MerchantInvitationsController < ApiController
   end
 
   def invitation_id
-    MerchantInvitation.id_from_public_id!(params.require(:id))
+    MerchantInvitation.id_from_public_id!(params.require(:invitation_id))
   end
 
   def email_mismatch

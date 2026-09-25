@@ -11,7 +11,7 @@ class User < ApplicationRecord
   has_many :merchant_memberships, dependent: :destroy
   has_many :merchants, through: :merchant_memberships
   has_many :merchant_invitations, foreign_key: :invited_by_id, inverse_of: :invited_by, dependent: :restrict_with_error
-  has_many :created_api_credentials, class_name: "ApiCredential", foreign_key: :created_by_id, dependent: :nullify
+  has_many :created_api_keys, class_name: "ApiKey", foreign_key: :created_by_id, dependent: :nullify
 
   normalizes :email, with: ->(e) { e.strip.downcase }
 

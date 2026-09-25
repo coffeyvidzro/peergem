@@ -51,6 +51,24 @@ class MerchantMembershipsController < ApiController
     head :no_content
   end
 
+  def leave
+    return if performed?
+
+    authorize merchant, :show?
+    merchant.with_lock do
+      membership = merchant.merchant_memberships.active.find_by!(user: current_session.user)
+      prevent_last_owner_change!(membership, nil)
+      membership.destroy!
+      Security::Events.record(
+        "merchant.membership_left",
+        user: current_session.user,
+        merchant: merchant,
+        metadata: { membership_id: membership.public_id }
+      )
+    end
+    head :no_content
+  end
+
   private
 
   def merchant
@@ -58,7 +76,7 @@ class MerchantMembershipsController < ApiController
   end
 
   def find_membership
-    merchant.merchant_memberships.find(MerchantMembership.id_from_public_id!(params.require(:id)))
+    merchant.merchant_memberships.find(MerchantMembership.id_from_public_id!(params.require(:membership_id)))
   end
 
   def membership_changes

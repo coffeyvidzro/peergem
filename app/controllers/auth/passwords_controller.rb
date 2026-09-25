@@ -2,7 +2,8 @@
 
 module Auth
   class PasswordsController < BaseController
-    before_action :require_session!, only: :enroll
+    before_action :require_session!, only: %i[enroll change]
+    rescue_from Auth::Passwords::Change::InvalidCurrentPasswordError, with: :invalid_current_password
 
     def login
       transaction = transaction!
@@ -50,6 +51,23 @@ module Auth
       render json: { error: { code: "invalid_password", message: error.record.errors.full_messages.to_sentence } }, status: :unprocessable_content
     end
 
+    def change
+      return if performed?
+
+      Auth::Passwords::Change.call(
+        user: current_session.user,
+        current_session: current_session,
+        current_password: params.require(:current_password),
+        **password_params,
+        ip_address: request.remote_ip,
+        user_agent: request.user_agent
+      )
+      head :no_content
+    rescue ActiveRecord::RecordInvalid => error
+      render json: { error: { code: "invalid_password", message: error.record.errors.full_messages.to_sentence } },
+        status: :unprocessable_content
+    end
+
     private
 
     def password_params
@@ -74,6 +92,11 @@ module Auth
       render json: {
         error: { code: "password_already_enrolled", message: "Use password reset to replace an existing password" }
       }, status: :conflict
+    end
+
+    def invalid_current_password
+      render json: { error: { code: "invalid_credentials", message: "Current password is incorrect" } },
+        status: :unauthorized
     end
   end
 end

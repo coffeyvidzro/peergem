@@ -44,4 +44,23 @@ RSpec.describe "Authentication" do
       expect(SecurityEvent.exists?(event_type: "session.created", user: user)).to be(true)
     end
   end
+
+  describe "POST /auth/password/change" do
+    it "changes the password and revokes every other session" do
+      user = User.create!(email: "member@example.com", password: "very-secure-password")
+      current_session, token = Session.issue(user: user)
+      other_session = Session.issue(user: user).first
+
+      post "/auth/password/change", params: {
+        current_password: "very-secure-password",
+        password: "new-very-secure-password",
+        password_confirmation: "new-very-secure-password"
+      }, headers: { "Authorization" => "Bearer #{token}" }
+
+      expect(response).to have_http_status(:no_content)
+      expect(user.reload.authenticate("new-very-secure-password")).to eq(user)
+      expect(current_session.reload).not_to be_revoked
+      expect(other_session.reload).to be_revoked
+    end
+  end
 end

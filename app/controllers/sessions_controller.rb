@@ -29,11 +29,12 @@ class SessionsController < ApiController
     head :no_content
   end
 
-  def destroy_all
+  def others
     return if performed?
 
     Sessions::RevokeAll.call(
       user: current_session.user,
+      except: current_session,
       ip_address: request.remote_ip,
       user_agent: request.user_agent
     )
