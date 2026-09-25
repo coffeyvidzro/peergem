@@ -1,35 +1,48 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <peer_gem_engineering_rules>
   <scope_and_style>
-    <rule>Use Ruby 4.0.7 and current Rails conventions. Match neighboring naming, formatting, routes, domain operations, and existing controller or UI patterns.</rule>
-    <rule>Do not create speculative services, provider adapters, interfaces, migrations, environment variables, or dependencies without a concrete task requirement.</rule>
-    <rule>Write small, reviewable changes with explicit errors and edge-case coverage. Do not silence errors or replace missing implementations with fabricated success paths.</rule>
-    <rule>Use the existing RuboCop configuration; format changed Ruby files and avoid unrelated formatting churn.</rule>
-    <rule>When changing database structure, add a migration, make it reversible where feasible, and generate the repository's schema artifact from the migrated database rather than editing generated schema files by hand. Preserve existing migration history.</rule>
+    <rule>Use Ruby 4.0.7 and existing Rails conventions. Match neighboring naming, formatting, routes, domain operations, policies, and existing controller or UI patterns.</rule>
+    <rule>Do not create speculative services, provider adapters, interfaces, migrations, environment variables, or dependencies without a concrete task requirement. Distinguish deployed functionality from target modules in architecture_context.xml.</rule>
+    <rule>Write small, reviewable changes with explicit errors and edge-case coverage. Do not silence errors, invent successful external responses, or claim regulatory clearance from code alone.</rule>
+    <rule>Use the repository RuboCop configuration; format changed Ruby files and avoid unrelated formatting churn.</rule>
+    <rule>When changing database structure, add a migration, make it reversible where feasible, and generate any schema artifact from a migrated database rather than hand-editing generated files. Preserve existing migration history.</rule>
   </scope_and_style>
 
-  <financial_integrity>
-    <rule>Represent money in integer minor currency units and use BigDecimal for calculations requiring decimals. Never use Float for financial calculations; define rounding, currency-specific subunit scales, and overflow boundaries explicitly.</rule>
-    <rule>For any new real-money ledger functionality, require append-only, balanced double-entry postings with durable unique business-operation references, transactionally enforced constraints, and reversals rather than editing prior entries.</rule>
-    <rule>Do not mutate Account.credit_balance as a substitute for financial ledger postings. Treat the existing field as legacy or non-authoritative until the owning domain and migration plan are approved; do not silently delete or repurpose it.</rule>
-    <rule>Use database transactions, appropriate row locks, unique indexes, and state preconditions for financial correctness. Redis and Redlock may coordinate work but must not be the only protection against double charging or duplicate posting.</rule>
-    <rule>Do not hold database transactions or row locks open across network calls to external payment rails, tax providers, or other remote services. Use durable delivery or reconciliation for an operation spanning process boundaries.</rule>
-    <rule>Require a tenant- and operation-scoped durable idempotency record for financially significant write operations; validate the request fingerprint so identical replays return the same operation and conflicting parameters fail. Apply equivalent protection to externally retryable business mutations. Redis is an admission aid, not the durable record. Unknown external outcomes must be reconciled, not assumed failed or retried with a new charge ID.</rule>
-    <rule>Model payment authorization, instruction acceptance, buyer action, confirmed collection, refund, and settlement as distinct outcomes. Never report funds collected solely on the basis of an HTTP or gRPC acknowledgement.</rule>
-    <rule>Use explicit, validated AASM transitions for newly implemented payment or account-state workflows. Do not impose a new state machine on unrelated existing models without a task-specific need.</rule>
-  </financial_integrity>
+  <money_and_accounting>
+    <rule>Use integer currency minor units for stored, transmitted, and logged monetary amounts; use BigDecimal for exact intermediate calculations. Never use binary Float for financial values. Declare currency-specific scale, allocation and rounding rules, and bounds before converting to minor units.</rule>
+    <rule>For real-money accounting, model an append-only ledger_entries journal with balanced double-entry postings, immutable operation references, database uniqueness, and reversal entries. Derive authoritative balances from posted entries or verified ledger-derived projections; never SQL UPDATE a merchant balance as an accounting operation.</rule>
+    <rule>Under the target design, the Go switch is the sole authoritative ledger writer. Ruby must not write competing ledger entries. Resolve ledger ownership, database transaction boundaries, and read consistency explicitly before implementing cross-service financial work.</rule>
+    <rule>Inside the ledger writer, acquire exclusive account row locks within an active PostgreSQL transaction (for example, a tenant-scoped locked find_by! with consistent lock ordering), verify available funds and invariants, post all debit and credit entries atomically, and commit once. No external network calls inside that transaction.</rule>
+    <rule>The current Account.credit_balance field is not a live double-entry balance. Do not update, delete, or silently repurpose it to satisfy new financial requirements. Propose an explicit migration and reconciliation plan when the owning domain is implemented.</rule>
+    <rule>Distinguish collection, platform fee income, merchant payable, tax payable, reserve, refund, chargeback, and merchant payout. Never credit a merchant as paid out solely because a buyer payment was accepted or collected.</rule>
+  </money_and_accounting>
 
-  <security_and_tenancy>
-    <rule>Scope data access and mutations to the authenticated merchant or owner and authorize every requested action; cover cross-tenant and cross-customer attempts in tests.</rule>
-    <rule>Do not store or log card PANs, CVVs, mobile money PINs, passwords, bearer tokens, API secrets, or unredacted sensitive provider payloads. Use tokenization, encryption, and minimal safe metadata where appropriate.</rule>
-    <rule>Verify and authenticate all external callbacks or service-to-service commands, restrict replay, and retain audit evidence without storing secrets.</rule>
-    <rule>Resolve public resource IDs through tenant-scoped queries; validate requests explicitly and use safe error responses and bounded timeouts. Do not infer approval, ownership, or permissions from client-supplied values alone.</rule>
-  </security_and_tenancy>
+  <idempotency_and_concurrency>
+    <rule>For each newly implemented externally initiated state-changing API endpoint, require an Idempotency-Key unless an explicitly documented exception is approved. Background jobs and downstream calls inherit a stable parent business-operation identity. Retrofitting unrelated existing endpoints is a separate scoped task.</rule>
+    <rule>Check merchant- and operation-scoped idempotency admission in Redis, and use Redlock to coordinate concurrent financial command bursts where the selected distributed-lock deployment provides the required guarantees. Neither Redis nor Redlock is authoritative: enforce a durable PostgreSQL idempotency record, canonical request fingerprint, uniqueness constraints, and transactionally safe state changes.</rule>
+    <rule>Identical key and parameters return the original operation or its current state; the same key with conflicting parameters is rejected. Preserve stable operation IDs for retryable external calls; never interpret an HTTP/gRPC timeout as definitive payment failure or issue a replacement debit until the original is reconciled.</rule>
+    <rule>Use database transactions, scoped row locks, stable lock ordering, unique indexes, and state preconditions for local financial correctness. Do not hold database transactions or locks open across calls to a switch, tax provider, risk provider, or telecom/bank network. Use durable delivery and explicit reconciliation across process boundaries.</rule>
+  </idempotency_and_concurrency>
+
+  <states_and_service_boundaries>
+    <rule>Define explicit, validated AASM transitions for each new transaction, PaymentIntent, PaymentAttempt, payout, and financial-account state machine. Reject invalid state hops gracefully, and verify allowed transitions atomically under concurrent updates.</rule>
+    <rule>Keep buyer action, external instruction acceptance, authorization, definitive collection, attempt failure, intent cancellation, refund, and payout states distinct. An unresolved or action-required attempt must block a second unrelated debit for the same collection obligation.</rule>
+    <rule>Only an authenticated, replay-safe and reconciled result from the authoritative execution boundary may establish external collection. Do not turn a local stub or an acknowledged gRPC instruction into succeeded status, a receipt, a ledger credit, or a payout.</rule>
+    <rule>For Go integrations, use explicit internal authentication, bounded deadlines, immutable minor-unit business snapshots, stable operation IDs, correlation identifiers, and protected result delivery. Confirm the ledger reference and unknown-outcome reconciliation path before implementing live settlement behavior.</rule>
+  </states_and_service_boundaries>
+
+  <tenancy_privacy_and_risk>
+    <rule>Resolve public resource IDs via authenticated, tenant-scoped queries; authorize every requested action. Cover cross-tenant and cross-customer access in tests, including background jobs and internal service messages.</rule>
+    <rule>Do not store or log card PANs, CVVs, mobile-money PINs, passwords, bearer tokens, reusable payment secrets, or unredacted sensitive provider payloads. Persist provider-safe tokens, limited display metadata, and audited consent references where required.</rule>
+    <rule>Authenticate external callbacks and service-to-service commands, validate freshness and replay protection, and retain redacted audit evidence. Apply least privilege and appropriate data retention to GeoIP, BIN, and telecom identity signals.</rule>
+    <rule>Risk decisions require documented thresholds, time budgets, provider fallback behavior, and audited reason codes. Never claim that third-party risk signals or a given latency objective have been achieved without measurement.</rule>
+    <rule>Tax quotes must use verified jurisdiction-specific effective rates, bases, exemptions, and supported provider coverage, with exact monetary rounding. Snapshot the approved result on the order or invoice before dispatching the payment instruction; a hard-coded universal Ghana tax percentage is not acceptable.</rule>
+  </tenancy_privacy_and_risk>
 
   <testing_and_delivery>
-    <rule>Add focused RSpec coverage for success, failure, invalid transitions, idempotent replays, and tenant boundaries relevant to the task. Add concurrency or database-constraint tests for financial admission changes.</rule>
-    <rule>For Ruby changes, run bin/rubocop and relevant bin/rspec paths when available. Run bin/ci when feasible; this repository's bin/ci currently does not replace the separate RSpec run.</rule>
-    <rule>For migrations, verify application against an isolated PostgreSQL database and inspect generated schema artifacts. Do not claim tests passed, migrations succeeded, or compliance was verified unless observed.</rule>
+    <rule>Add focused RSpec coverage for happy paths, failures, invalid transitions, idempotent replay and payload conflicts, tenant boundaries, and unknown external outcomes relevant to the task. Add concurrency or database-constraint tests for financial admission and ledger changes.</rule>
+    <rule>For Ruby changes, run bin/rubocop and relevant bin/rspec paths when available. Run bin/ci when feasible; the current bin/ci does not replace the separate RSpec run. For future Go changes, use the Go project's actual formatter and test suite.</rule>
+    <rule>For migrations, verify application against isolated PostgreSQL and inspect generated schema artifacts. Do not claim tests passed, migrations succeeded, external collection settled, or legal compliance was verified unless observed.</rule>
     <rule>Describe required credentials or infrastructure without putting real secrets into tests, prompts, code, logs, or repository files.</rule>
   </testing_and_delivery>
 </peer_gem_engineering_rules>

@@ -2,29 +2,55 @@
 <peer_gem_architecture>
   <identity>
     <name>PeerGem</name>
-    <product>Developer-first Merchant of Record and commerce platform, beginning in Ghana.</product>
-    <business_model>Intended to manage the merchant-facing commerce lifecycle, collection obligations, fees, tax, refunds, and merchant payables rather than operate solely as a payment pass-through.</business_model>
+    <product>Developer-first Merchant of Record (MoR) and commerce platform for Africa, beginning in Ghana.</product>
+    <business_model status="target">PeerGem intends to assume the applicable financial and legal obligations of the seller of record for transactions facilitated for sub-merchants, rather than operate solely as a payment gateway. Model buyer payments, merchant payables, PeerGem fees, taxes, reversals, and payouts as distinct obligations. The legal contracting and licensing structure must be verified before production launch.</business_model>
+    <payment_methods status="target">One developer API for card payments using supported Visa and Mastercard processing partners and regional mobile money, including MTN MoMo, Telecel Cash, and AT Money where commercial and technical access is established.</payment_methods>
   </identity>
 
   <current_repository>
     <runtime>Ruby 4.0.7, Rails 8.1, PostgreSQL, Redis, and Sidekiq.</runtime>
-    <api>JSON endpoints use ApiController, authorization and bearer authentication. Follow existing routes, policies, serializers, and tenant scoping.</api>
+    <api>JSON endpoints use ApiController, bearer authentication, policies, serializers, and tenant scoping. Inspect the current routes and models before assuming a capability exists.</api>
     <ui>Rails also supports server-rendered ERB, Turbo, Stimulus, Tailwind, Propshaft, and importmap. Do not assume an API-only Rails application or introduce Node tooling without a task-specific reason.</ui>
-    <layout>Existing app/domains, app/models, app/controllers, app/policies, app/serializers, db/migrate, and spec directories define the current conventions.</layout>
-    <features>Identity, authentication, sessions, merchants, merchant memberships, merchant accounts, API keys, and security events are present. Inspect the current tree before treating any additional module as implemented.</features>
-    <data_caveat>The current Account model contains a mutable credit_balance field. This is not evidence that a production double-entry ledger exists or that the field is an authoritative financial balance.</data_caveat>
+    <layout>Follow existing app/domains, app/models, app/controllers, app/policies, app/serializers, db/migrate, and spec conventions.</layout>
+    <features>Identity, authentication, sessions, merchants, merchant memberships, merchant accounts, API keys, and security events are present at the time this guidance was authored. Inspect the current tree before treating any other feature as implemented.</features>
+    <data_caveat>The current Account model has a mutable credit_balance field. It is not evidence of an authoritative double-entry ledger; do not silently reinterpret, delete, or use it to represent real-money merchant balances.</data_caveat>
   </current_repository>
 
   <target_architecture status="planned">
-    <ruby_application_core>Developer REST APIs, merchant and customer commerce, PaymentIntent orchestration, subscriptions and usage billing, Connect, Radar, and tax orchestration.</ruby_application_core>
-    <go_switch_core>Separate downstream Go service for high-concurrency payment execution and external bank and telecom integration. The exact supported networks, protocols, contracts, and deployment arrangements require explicit design and verification.</go_switch_core>
-    <boundary>Ruby may create durable financial instructions and present commerce state. Accepted instructions are not proof of collection. Authenticating external results, reconciling unknown outcomes, and assigning authoritative ledger ownership must precede live payment execution.</boundary>
-    <integrations>PostgreSQL, Redis, Sidekiq, RSpec, RuboCop, Brakeman, MaxMind GeoIP2, Lograge, AASM, Redlock, AWS SES, Cloudflare R2, Stoplight, OkComputer, Sentry, Faraday, and AvaTax are intended stack components. Verify presence and configuration before using a component.</integrations>
+    <ruby_application_core>Own the developer-facing REST and UI experience, authentication and tenant authorization, commerce decisions, merchant and sub-merchant onboarding, subscriptions, usage metering, payment intent orchestration, tax quotation, and risk decisions. Ruby records durable business instructions and presents confirmed or pending commerce state; it does not infer settlement from switch acceptance.</ruby_application_core>
+    <go_switch_core>Separate downstream high-concurrency payment execution service. Expose an authenticated internal gRPC boundary to Ruby. Implement external bank and telecom connectivity over approved VPN/TCP interfaces, with planned GhIPSS GIP, MMI, gh-link, and ACH channels where access and protocol contracts are established. Do not assume that any such connection or protocol is already deployed.</go_switch_core>
+    <ledger_ownership>Go is the planned sole writer of authoritative append-only, balanced double-entry ledger_entries for real-money operations. The ledger service owns account locking and posting transactions. Ruby can submit uniquely identified instructions and read verified ledger-derived balances or projections; Ruby must not independently post competing financial entries or update a merchant balance column. Confirm shared-account schema, consistency and read contracts before implementation.</ledger_ownership>
+    <service_boundary>Define stable operation IDs, merchant identity, integer minor-unit amounts and currencies, fee and beneficiary snapshots, authenticated requests and results, correlation references, delivery and retry semantics, and reconciliation of unknown outcomes before connecting live money movement. Distinguish accepted, pending, action-required, authorized, collected, failed, refunded, and paid-out outcomes.</service_boundary>
+    <deployment status="target">Stateless API and frontend compute on DigitalOcean and/or AWS; intended primary financial ledger and PII databases in a secured physical data center in Accra, Ghana. Threat modeling, backup and disaster recovery, cross-border access, retention, privacy and applicable hosting requirements must be assessed; this topology alone does not establish data-sovereignty compliance.</deployment>
+    <stack>PostgreSQL, Redis, Sidekiq, RSpec, RuboCop, Brakeman, MaxMind GeoIP2, Lograge, AASM, Redlock, AWS SES, Cloudflare R2, Stoplight, OkComputer, Sentry, and Faraday. Verify a dependency and its configuration before relying on it.</stack>
   </target_architecture>
 
+  <domain_modules status="planned">
+    <module name="Payments">
+      <responsibility>Idempotent PaymentIntent API, immutable order and amount snapshots, payment-method token references, card tokenization through approved partners, and mobile-money consent or preapproval references for supported auto-debit flows.</responsibility>
+      <boundary>A PaymentIntent is an intention to collect, a PaymentAttempt is one external execution operation, and a confirmed ledger posting is the authoritative financial event. A network timeout is an unknown outcome, not permission to issue a new debit.</boundary>
+    </module>
+    <module name="Billing">
+      <responsibility>Subscriptions, renewal schedules, invoices, usage event ingestion and deduplication, metering and rating, billing-period closure, proration where specified, and idempotent collection requests through Payments.</responsibility>
+      <boundary>Keep usage, invoice, collection, and payout histories distinct; never convert a scheduled charge into settled funds merely because a job ran.</boundary>
+    </module>
+    <module name="Connect">
+      <responsibility>Multi-tenant marketplace sub-merchant/vendor profiles, onboarding and eligibility, beneficiary identity, agreed application fees, immutable split instructions, merchant payable records, and bulk GIP payout requests.</responsibility>
+      <boundary>Calculate and validate splits in integer minor units with explicit rounding and allocation rules. Do not promise beneficiaries funds that have not been confirmed and allocated in the authoritative ledger.</boundary>
+    </module>
+    <module name="Radar">
+      <responsibility>Pre-execution risk policies using minimally necessary MaxMind GeoIP2 signals, card BIN metadata, and authorized telecom name-matching signals when available.</responsibility>
+      <boundary>Define risk latency budgets, fallbacks, data-protection safeguards, decision auditing, and fail-open/fail-closed policy explicitly. No risk signal or external telco lookup is assumed to exist until integrated.</boundary>
+    </module>
+    <module name="Tax">
+      <responsibility>Tax quotation and calculation orchestration through a Faraday-wrapped Avalara AvaTax integration where supported, with exact BigDecimal arithmetic, versioned jurisdictional rules, and immutable order/invoice tax snapshots.</responsibility>
+      <boundary>Obtain and validate tax quotations before financial instruction dispatch; do not make remote tax requests while holding ledger locks or an open financial database transaction. Confirm applicability, rates, bases, rounding, exemptions, effective dates, and AvaTax coverage.</boundary>
+    </module>
+  </domain_modules>
+
   <regulatory_context status="requirements-to-verify">
-    <item>Ghana payment-services licensing under Act 987 and applicable Bank of Ghana requirements are business planning constraints; do not assert a license has been granted.</item>
-    <item>Data protection, hosting, retention, and cross-border transfer requirements under Act 843 must be confirmed for the particular data and deployment. Do not infer a blanket statutory physical-hosting mandate.</item>
-    <item>Tax rates, taxable bases, exemptions, rounding, invoice requirements, and effective dates require authoritative verification. Do not hard-code an assumed universal combined VAT rate.</item>
+    <item>Business plan: 100 percent Ghanaian-owned entity, fit-and-proper governance, and intended Bank of Ghana Enhanced Payment Service Provider licensing under the Payment Systems and Services Act, 2019 (Act 987). Do not assert that a license or legal MoR status has already been obtained, or that one category of license suffices for every planned activity.</item>
+    <item>Ghana Data Protection Act, 2012 (Act 843) and all applicable hosting, privacy, access, and cross-border transfer obligations require analysis for the actual data and deployment. Do not present Accra hosting alone as a statutory guarantee.</item>
+    <item>Planning assumption for tax discussion: 15 percent VAT, 2.5 percent NHIL, and 2.5 percent GETFund on a proposed decoupled base, associated by the business plan with Act 1151. These figures, legal basis, taxable base, exemptions, and effective dates are NOT verified requirements; do not hard-code or describe a universal 20 percent rate as compliant without authoritative, transaction-specific verification.</item>
   </regulatory_context>
 </peer_gem_architecture>
