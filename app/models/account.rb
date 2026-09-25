@@ -21,7 +21,7 @@ class Account < ApplicationRecord
   # @return [Integer] PeerGem's dynamic cut calculated in Pesewas
   def calculate_fee_in_pesewas(amount_in_pesewas)
     bps, fixed, _ = active_fee_tier
-    
+
     gross_bd = BigDecimal(amount_in_pesewas.to_s)
     bps_bd   = BigDecimal(bps.to_s)
     fixed_bd = BigDecimal(fixed.to_s)
@@ -38,19 +38,12 @@ class Account < ApplicationRecord
   # @return [Integer] PeerGem's subscription platform cut in Pesewas
   def calculate_subscription_fee_in_pesewas(amount_in_pesewas)
     _, _, sub_bps = active_fee_tier
-    
+
     gross_bd = BigDecimal(amount_in_pesewas.to_s)
     bps_bd   = BigDecimal(sub_bps.to_s)
 
     variable_cut = gross_bd * (bps_bd / BigDecimal("10000"))
     peergem_round(variable_cut)
-  end
-
-  # Safe programmatic modification of local balance assets
-  # @param amount [Integer] Requested deduction value
-  def reduce_credit_balance(amount)
-    deduction = [amount, credit_balance].min
-    decrement!(:credit_balance, deduction)
   end
 
   private

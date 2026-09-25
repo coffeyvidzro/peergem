@@ -7,7 +7,11 @@ class User < ApplicationRecord
 
   has_many :sessions,          dependent: :destroy
   has_many :auth_transactions, dependent: :destroy
-  has_many :security_events, dependent: :nullify
+  has_many :security_events,   dependent: :nullify
+  has_many :merchant_memberships, dependent: :destroy
+  has_many :merchants, through: :merchant_memberships
+  has_many :merchant_invitations, foreign_key: :invited_by_id, inverse_of: :invited_by, dependent: :restrict_with_error
+  has_many :created_api_keys, class_name: "ApiKey", foreign_key: :created_by_id, dependent: :nullify
 
   normalizes :email, with: ->(e) { e.strip.downcase }
 
@@ -15,6 +19,7 @@ class User < ApplicationRecord
 
   validates :email, presence: true, uniqueness: { case_sensitive: false }
   validates :email, format: { with: URI::MailTo::EMAIL_REGEXP }
+  validates :email, disposable_email: true
   validates :password, length: { minimum: 12, maximum: 72 }, allow_nil: true
 
   scope :active, -> { where(disabled_at: nil) }
@@ -29,17 +34,5 @@ class User < ApplicationRecord
 
   def disable!
     update!(disabled_at: Time.current)
-  end
-
-    def active_for_authentication?
-    super && disabled_at.nil? && email_verified?
-  end
-
-  def inactive_message
-    disabled_at? ? :disabled : super
-  end
-
-  def email_verified?
-    confirmed_at.present?
   end
 end

@@ -1,25 +1,30 @@
 # frozen_string_literal: true
 
-class UsersController < ApplicationController
-  before_action :authenticate_account!
-  rescue_from Users::Deactivate::ConfirmationRequiredError, with: :render_confirmation_required
-  rescue_from Users::Deactivate::ReauthenticationRequiredError, with: :render_reauthentication_required
-  rescue_from Users::Deactivate::MerchantOwnershipRequiredError, with: :render_merchant_ownership_required
+class UsersController < ApiController
+  before_action :require_session!
+  rescue_from Users::Deactivate::ConfirmationRequiredError, with: :confirmation_required
+  rescue_from Users::Deactivate::ReauthenticationRequiredError, with: :reauthentication_required
+  rescue_from Users::Deactivate::MerchantOwnershipRequiredError, with: :merchant_ownership_required
 
   def show
-    render_user
+    return if performed?
+
+    render json: { user: UserSerializer.new(current_session.user).as_json }
   end
 
   def update
-    Users::UpdateProfile.call(user: Current.user, name: user_params.fetch(:name))
-    render_user
+    return if performed?
+
+    current_session.user.update!(user_params)
+    render json: { user: UserSerializer.new(current_session.user).as_json }
   end
 
   def destroy
+    return if performed?
+
     Users::Deactivate.call(
-      user: Current.user,
-      session: Current.auth_session,
-      confirmation: params.expect(:confirmation),
+      user: current_session.user,
+      confirmation: params[:confirmation],
       password: params[:password],
       ip_address: request.remote_ip,
       user_agent: request.user_agent
@@ -30,18 +35,22 @@ class UsersController < ApplicationController
   private
 
   def user_params
-    params.expect(user: [ :name ])
+    params.permit(:name)
   end
 
-  def render_user
-    render json: { user: UserSerializer.call(Current.user) }
+  def merchant_ownership_required
+    render json: {
+      error: { code: "merchant_ownership_required", message: "Transfer merchant ownership before deactivating" }
+    }, status: :conflict
   end
 
-  def render_confirmation_required
-    render json: { error: "confirmation_required" }, status: :unprocessable_content
+  def confirmation_required
+    render json: { error: { code: "confirmation_required", message: "Confirmation must be DEACTIVATE" } },
+      status: :unprocessable_content
   end
 
-  def render_reauthentication_required
-    render json: { error: "reauthentication_required" }, status: :forbidden
+  def reauthentication_required
+    render json: { error: { code: "reauthentication_required", message: "Current password is required" } },
+      status: :forbidden
   end
 end
