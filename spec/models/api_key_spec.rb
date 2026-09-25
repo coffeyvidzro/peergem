@@ -9,7 +9,7 @@ RSpec.describe ApiKey do
   end
 
   it "authenticates the issued secret without persisting it" do
-    result = ApiKeys::Issue.call(
+    result = Merchants::ApiKeys::Issue.call(
       merchant: merchant,
       created_by: user,
       attributes: { name: "Server", scopes: [ "payments:read" ] }
@@ -21,7 +21,7 @@ RSpec.describe ApiKey do
   end
 
   it "enforces CIDR allowlists" do
-    result = ApiKeys::Issue.call(
+    result = Merchants::ApiKeys::Issue.call(
       merchant: merchant,
       created_by: user,
       attributes: {
