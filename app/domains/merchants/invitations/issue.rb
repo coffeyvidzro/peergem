@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module MerchantInvitations
+module Merchants::Invitations
   class Issue
     Result = Data.define(:invitation, :token)
 

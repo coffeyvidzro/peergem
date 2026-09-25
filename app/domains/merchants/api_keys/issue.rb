@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module ApiKeys
+module Merchants::ApiKeys
   class Issue
     Result = Data.define(:api_key, :secret)
 
