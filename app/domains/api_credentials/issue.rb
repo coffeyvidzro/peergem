@@ -7,14 +7,12 @@ module ApiCredentials
     def self.call(merchant:, created_by:, attributes:)
       key_id = SecureRandom.hex(12)
       secret = SecureRandom.urlsafe_base64(32, false)
-      mode = attributes.fetch(:mode)
-      plaintext = "pg_#{mode}_#{key_id}_#{secret}"
+      plaintext = "pgk_#{key_id}_#{secret}"
 
       ApiCredential.transaction do
         credential = merchant.api_credentials.create!(
           created_by: created_by,
           name: attributes.fetch(:name),
-          mode: mode,
           key_id: key_id,
           secret_digest: ApiCredential.digest(secret),
           scopes: Array(attributes[:scopes]).map(&:to_s).uniq.sort,
@@ -25,7 +23,7 @@ module ApiCredentials
           "api_credential.created",
           user: created_by,
           merchant: merchant,
-          metadata: { api_credential_id: credential.public_id, mode: mode, scopes: credential.scopes }
+          metadata: { api_credential_id: credential.public_id, scopes: credential.scopes }
         )
         Result.new(credential: credential, secret: plaintext)
       end

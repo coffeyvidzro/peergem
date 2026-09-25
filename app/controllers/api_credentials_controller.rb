@@ -55,7 +55,7 @@ class ApiCredentialsController < ApiController
   end
 
   def credential_params
-    permitted = params.require(:api_credential).permit(:name, :mode, :expires_at, scopes: [], ip_allowlist: [])
+    permitted = params.require(:api_credential).permit(:name, :expires_at, scopes: [], ip_allowlist: [])
     permitted.to_h.symbolize_keys
   end
 

@@ -4,8 +4,7 @@ require "ipaddr"
 
 class ApiCredential < ApplicationRecord
   PUBLIC_ID_PREFIX = "key_"
-  TOKEN_PATTERN = /\Apg_(test|live)_([0-9a-f]{24})_([A-Za-z0-9_-]{43})\z/
-  MODES = %w[test live].freeze
+  TOKEN_PATTERN = /\Apgk_([0-9a-f]{24})_([A-Za-z0-9_-]{43})\z/
   SCOPES = %w[
     payments:read payments:write customers:read customers:write
     payouts:read payouts:write webhooks:read webhooks:write
@@ -17,7 +16,6 @@ class ApiCredential < ApplicationRecord
 
   validates :name, :key_id, :secret_digest, presence: true
   validates :key_id, uniqueness: true, format: { with: /\A[0-9a-f]{24}\z/ }
-  validates :mode, inclusion: { in: MODES }
   validate :scopes_are_supported
   validate :ip_allowlist_is_valid
   validate :expiry_is_in_the_future, on: :create
@@ -54,8 +52,8 @@ class ApiCredential < ApplicationRecord
     match = TOKEN_PATTERN.match(token.to_s)
     return unless match
 
-    mode, key_id, secret = match.captures
-    credential = active.includes(:merchant).find_by(key_id: key_id, mode: mode)
+    key_id, secret = match.captures
+    credential = active.includes(:merchant).find_by(key_id: key_id)
     return unless credential
     return unless credential.merchant.status.in?(%w[onboarding active])
     return unless ActiveSupport::SecurityUtils.secure_compare(credential.secret_digest, digest(secret))

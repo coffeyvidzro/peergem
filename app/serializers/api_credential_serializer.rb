@@ -5,7 +5,6 @@ class ApiCredentialSerializer
     {
       id: credential.public_id,
       name: credential.name,
-      mode: credential.mode,
       scopes: credential.scopes,
       ip_allowlist: credential.ip_allowlist,
       expires_at: credential.expires_at&.iso8601,

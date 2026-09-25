@@ -9,7 +9,6 @@ class CreateApiCredentials < ActiveRecord::Migration[8.1]
       t.string :name, null: false
       t.string :key_id, null: false
       t.string :secret_digest, null: false
-      t.string :mode, null: false
       t.string :scopes, array: true, null: false, default: []
       t.jsonb :ip_allowlist, null: false, default: []
       t.inet :last_used_ip
@@ -20,9 +19,8 @@ class CreateApiCredentials < ActiveRecord::Migration[8.1]
     end
 
     add_index :api_credentials, :key_id, unique: true
-    add_index :api_credentials, [ :merchant_id, :mode, :created_at ]
+    add_index :api_credentials, [ :merchant_id, :created_at ]
     add_index :api_credentials, :expires_at, where: "revoked_at IS NULL"
-    add_check_constraint :api_credentials, "mode IN ('test', 'live')", name: "chk_api_credentials_mode"
     add_check_constraint :api_credentials, "jsonb_typeof(ip_allowlist) = 'array'", name: "chk_api_credentials_ip_allowlist"
     add_check_constraint :api_credentials, "expires_at IS NULL OR expires_at > created_at",
       name: "chk_api_credentials_expiry"

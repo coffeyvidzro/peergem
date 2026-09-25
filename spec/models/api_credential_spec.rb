@@ -12,7 +12,7 @@ RSpec.describe ApiCredential do
     result = ApiCredentials::Issue.call(
       merchant: merchant,
       created_by: user,
-      attributes: { name: "Server", mode: "test", scopes: [ "payments:read" ] }
+      attributes: { name: "Server", scopes: [ "payments:read" ] }
     )
 
     expect(described_class.authenticate(result.secret, ip_address: "192.0.2.1")).to eq(result.credential)
@@ -26,7 +26,6 @@ RSpec.describe ApiCredential do
       created_by: user,
       attributes: {
         name: "Restricted",
-        mode: "live",
         scopes: [ "payments:write" ],
         ip_allowlist: [ "203.0.113.0/24" ]
       }

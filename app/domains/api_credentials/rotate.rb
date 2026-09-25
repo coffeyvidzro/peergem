@@ -11,7 +11,6 @@ module ApiCredentials
           created_by: rotated_by,
           attributes: {
             name: credential.name,
-            mode: credential.mode,
             scopes: credential.scopes,
             ip_allowlist: credential.ip_allowlist,
             expires_at: credential.expires_at

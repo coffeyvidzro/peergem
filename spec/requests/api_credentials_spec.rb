@@ -14,7 +14,6 @@ RSpec.describe "API credentials" do
     post "/merchants/#{merchant.public_id}/api_credentials", params: {
       api_credential: {
         name: "Backend",
-        mode: "test",
         scopes: %w[payments:read payments:write],
         ip_allowlist: [ "127.0.0.0/8" ]
       }
