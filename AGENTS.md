@@ -13,3 +13,9 @@ planned boundaries, not code already present here.
 Prefer focused changes, tenant-scoped queries, regression tests, and factual
 validation results. Do not claim external payment settlement or regulatory
 compliance merely because a local test or adapter passes.
+
+For a discussion or review, provide findings without changing files. For an
+implementation request, edit the existing code and verify the requested
+behavior. When continuing a user-authorized pull request, work on that same
+branch and report its checks; do not create a parallel PR or merge it unless
+requested. Never invent tool results or claim a test passed without running it.
