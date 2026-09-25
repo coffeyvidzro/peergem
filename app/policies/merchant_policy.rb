@@ -9,5 +9,6 @@ class MerchantPolicy
   def update? = @membership&.role.in?(%w[owner admin])
   def manage_members? = update?
   def manage_owners? = @membership&.role == "owner"
+  def manage_api_credentials? = @membership&.role.in?(%w[owner admin])
   def membership = @membership
 end

@@ -17,6 +17,8 @@ RSpec.describe Auth::Passwords::Login do
 
     expect(described_class.call(transaction: transaction, password: "incorrect")).to be(false)
     expect(transaction.reload).to be_started
+    expect(user.reload.failed_attempts).to eq(1)
+    expect(SecurityEvent.exists?(event_type: "authentication.failed", user: user)).to be(true)
   end
 
   it "performs a password hash check when the identity does not exist" do

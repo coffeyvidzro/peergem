@@ -5,6 +5,10 @@ scope "/merchants/:merchant_id", as: :merchant do
   patch "/", to: "merchants#update"
   resources :memberships, controller: "merchant_memberships", only: %i[index update destroy]
   resources :invitations, controller: "merchant_invitations", only: %i[index create destroy]
+  resources :api_credentials, only: %i[index create destroy] do
+    post :rotate, on: :member
+  end
 end
 
 post "merchant_invitations/accept", to: "merchant_invitations#accept"
+get "api_credentials/current", to: "api_authentication#show"

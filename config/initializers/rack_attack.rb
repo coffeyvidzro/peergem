@@ -47,6 +47,10 @@ Rack::Attack.throttle("authentication/transaction", limit: 10, period: 10.minute
   identifier_digest.call(request.params["transaction_id"]) if request.post? && transaction_paths.include?(request.path)
 end
 
+Rack::Attack.throttle("api-credential-verification/ip", limit: 60, period: 1.minute) do |request|
+  request.ip if request.get? && request.path == "/api_credentials/current"
+end
+
 Rack::Attack.throttled_responder = lambda do |request|
   retry_after = request.env.fetch("rack.attack.match_data", {})[:period]
   headers = { "Content-Type" => "application/json" }

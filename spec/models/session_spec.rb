@@ -29,4 +29,12 @@ RSpec.describe Session do
       expect { described_class.find_by_public_id!(SecureRandom.uuid) }.to raise_error(ActiveRecord::RecordNotFound)
     end
   end
+
+  it "does not authenticate a session after the inactivity timeout" do
+    user = User.create!(email: "member@example.com")
+    session, token = described_class.issue(user: user)
+    session.update_columns(created_at: (described_class::IDLE_TIMEOUT + 1.minute).ago) # rubocop:disable Rails/SkipsModelValidations
+
+    expect(described_class.find_by_token(token)).to be_nil
+  end
 end

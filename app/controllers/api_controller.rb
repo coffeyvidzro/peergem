@@ -18,10 +18,26 @@ class ApiController < ActionController::API
     @current_session = Session.find_by_token(token) if scheme&.casecmp?("Bearer") && token.present?
   end
 
+  def current_api_credential
+    return @current_api_credential if defined?(@current_api_credential)
+
+    scheme, token = request.authorization.to_s.split(" ", 2)
+    @current_api_credential = ApiCredential.authenticate(token, ip_address: request.remote_ip) if
+      scheme&.casecmp?("Bearer") && token.present?
+  end
+
   def require_session!
     return if current_session
 
     render json: { error: { code: "unauthorized", message: "A valid bearer token is required" } }, status: :unauthorized
+  end
+
+  def require_api_credential!(scope: nil)
+    credential = current_api_credential
+    return if credential && (scope.nil? || credential.allows_scope?(scope))
+
+    render json: { error: { code: "unauthorized", message: "A valid API credential is required" } },
+      status: :unauthorized
   end
 
   def pundit_user

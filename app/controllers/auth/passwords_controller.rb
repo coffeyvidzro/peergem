@@ -8,7 +8,12 @@ module Auth
       transaction = transaction!
       return invalid_state unless transaction.started?
 
-      user = Auth::Passwords::Login.call(transaction: transaction, password: params.require(:password))
+      user = Auth::Passwords::Login.call(
+        transaction: transaction,
+        password: params.require(:password),
+        ip_address: request.remote_ip,
+        user_agent: request.user_agent
+      )
       return invalid_credentials unless user
 
       render_session(user, assurance: "password")

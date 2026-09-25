@@ -3,6 +3,8 @@
 class Session < ApplicationRecord
   PUBLIC_ID_PREFIX = "ses_"
   TOKEN_PREFIX = "pgs_"
+  IDLE_TIMEOUT = 24.hours
+  ACTIVITY_WRITE_INTERVAL = 5.minutes
 
   belongs_to :user
 
@@ -11,7 +13,12 @@ class Session < ApplicationRecord
   validates :token_hash, presence: true, uniqueness: true
   validates :assurance,  inclusion: { in: ASSURANCES }
 
-  scope :active, -> { where(revoked_at: nil).where("expires_at > ?", Time.current) }
+  scope :active, lambda {
+    now = Time.current
+    where(sessions: { revoked_at: nil })
+      .where("sessions.expires_at > ?", now)
+      .where("COALESCE(sessions.last_seen_at, sessions.created_at) > ?", now - IDLE_TIMEOUT)
+  }
 
   # Issues a new session. Returns [session, plaintext_token].
   # Only the SHA-256 hash of the token is persisted.
@@ -40,7 +47,9 @@ class Session < ApplicationRecord
   def self.find_by_token(plaintext)
     return unless plaintext&.start_with?(TOKEN_PREFIX)
 
-    active.joins(:user).merge(User.active).find_by(token_hash: Digest::SHA256.hexdigest(plaintext))
+    session = active.joins(:user).merge(User.active).find_by(token_hash: Digest::SHA256.hexdigest(plaintext))
+    session&.touch_seen!
+    session
   end
 
   def self.find_by_public_id!(public_id)
@@ -52,7 +61,8 @@ class Session < ApplicationRecord
 
   def revoked? = revoked_at.present?
   def expired? = expires_at <= Time.current
-  def active?  = !revoked? && !expired?
+  def idle? = (last_seen_at || created_at) <= IDLE_TIMEOUT.ago
+  def active?  = !revoked? && !expired? && !idle?
   def public_id = "#{PUBLIC_ID_PREFIX}#{id}"
 
   def revoke!(ip_address: nil, user_agent: nil)
@@ -69,6 +79,8 @@ class Session < ApplicationRecord
   end
 
   def touch_seen!
-    update_column(:last_seen_at, Time.current)
+    return if last_seen_at&.after?(ACTIVITY_WRITE_INTERVAL.ago)
+
+    update_column(:last_seen_at, Time.current) # rubocop:disable Rails/SkipsModelValidations
   end
 end

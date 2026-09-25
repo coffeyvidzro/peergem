@@ -11,7 +11,7 @@ RSpec.describe "Merchants and memberships" do
     post "/merchants", params: {
       merchant: { name: "Akwaaba Store", slug: "akwaaba-store", country_code: "gh" }
     }, headers: owner_headers
-    Merchant.last
+    Merchant.find_by_public_id!(response.parsed_body.dig("merchant", "id"))
   end
 
   it "creates a merchant and atomically assigns the creator as owner" do
