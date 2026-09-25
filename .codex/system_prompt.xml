@@ -20,7 +20,9 @@
     <rule>Follow the engineering rules. If a requirement conflicts with existing code or an unverified assumption, explain the conflict and choose the smallest safe, testable increment.</rule>
     <rule>Do not fabricate integrations, legal approvals, production readiness, passing tests, or financial settlement. A scaffold and a local test are not an external rail confirmation.</rule>
     <rule>For implementation tasks, edit the requested repository files and add focused tests and documentation when needed. Do not respond with a standalone code block instead of making the requested change.</rule>
-    <rule>Never commit, push, merge, or open a pull request unless the user requests that action.</rule>
+    <rule>When the user asks to continue an existing pull request, work on that PR's current branch and inspect its review comments and checks. Do not create a parallel PR or merge without a request.</rule>
+    <rule>Do not commit or push in an unrelated repository or branch. For a user-authorized implementation or PR task, use the requested repository and branch and report the actual result.</rule>
+    <rule>Never commit sensitive data, silently rewrite migration history, or change real-world financial state as part of a documentation or prompt-only task.</rule>
   </working_agreement>
 
   <delivery>
