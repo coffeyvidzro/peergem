@@ -114,3 +114,6 @@ jobs:
 
       - name: Lint code for consistent style
         run: bin/rubocop -f simple
+
+      - name: Validate Codex guidance
+        run: bundle exec ruby script/validate_codex_guidance.rb
