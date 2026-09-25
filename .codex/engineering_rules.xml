@@ -5,16 +5,16 @@
     <rule>Do not create speculative services, provider adapters, interfaces, migrations, environment variables, or dependencies without a concrete task requirement.</rule>
     <rule>Write small, reviewable changes with explicit errors and edge-case coverage. Do not silence errors or replace missing implementations with fabricated success paths.</rule>
     <rule>Use the existing RuboCop configuration; format changed Ruby files and avoid unrelated formatting churn.</rule>
-    <rule>When changing database structure, use a new reversible migration and generate any schema snapshot from the database; do not hand-edit generated schema files.</rule>
+    <rule>When changing database structure, add a migration, make it reversible where feasible, and generate the repository's schema artifact from the migrated database rather than editing generated schema files by hand. Preserve existing migration history.</rule>
   </scope_and_style>
 
   <financial_integrity>
-    <rule>Represent money in integer minor currency units and use BigDecimal for calculations requiring decimals. Never use Float for financial calculations; define rounding and currency scale at the boundary.</rule>
+    <rule>Represent money in integer minor currency units and use BigDecimal for calculations requiring decimals. Never use Float for financial calculations; define rounding, currency-specific subunit scales, and overflow boundaries explicitly.</rule>
     <rule>For any new real-money ledger functionality, require append-only, balanced double-entry postings with durable unique business-operation references, transactionally enforced constraints, and reversals rather than editing prior entries.</rule>
     <rule>Do not mutate Account.credit_balance as a substitute for financial ledger postings. Treat the existing field as legacy or non-authoritative until the owning domain and migration plan are approved; do not silently delete or repurpose it.</rule>
     <rule>Use database transactions, appropriate row locks, unique indexes, and state preconditions for financial correctness. Redis and Redlock may coordinate work but must not be the only protection against double charging or duplicate posting.</rule>
     <rule>Do not hold database transactions or row locks open across network calls to external payment rails, tax providers, or other remote services. Use durable delivery or reconciliation for an operation spanning process boundaries.</rule>
-    <rule>Require scoped durable idempotency for financial write operations. Replaying a key with identical parameters returns the same operation; conflicting parameters fail. Unknown external outcomes must be reconciled, not assumed failed or retried with a new charge ID.</rule>
+    <rule>Require a tenant- and operation-scoped durable idempotency record for financially significant write operations; validate the request fingerprint so identical replays return the same operation and conflicting parameters fail. Apply equivalent protection to externally retryable business mutations. Redis is an admission aid, not the durable record. Unknown external outcomes must be reconciled, not assumed failed or retried with a new charge ID.</rule>
     <rule>Model payment authorization, instruction acceptance, buyer action, confirmed collection, refund, and settlement as distinct outcomes. Never report funds collected solely on the basis of an HTTP or gRPC acknowledgement.</rule>
     <rule>Use explicit, validated AASM transitions for newly implemented payment or account-state workflows. Do not impose a new state machine on unrelated existing models without a task-specific need.</rule>
   </financial_integrity>
@@ -23,7 +23,7 @@
     <rule>Scope data access and mutations to the authenticated merchant or owner and authorize every requested action; cover cross-tenant and cross-customer attempts in tests.</rule>
     <rule>Do not store or log card PANs, CVVs, mobile money PINs, passwords, bearer tokens, API secrets, or unredacted sensitive provider payloads. Use tokenization, encryption, and minimal safe metadata where appropriate.</rule>
     <rule>Verify and authenticate all external callbacks or service-to-service commands, restrict replay, and retain audit evidence without storing secrets.</rule>
-    <rule>Use stable merchant-scoped IDs, explicit request validation, safe error responses, and bounded timeouts. Do not infer approval, ownership, or permissions from client-supplied values alone.</rule>
+    <rule>Resolve public resource IDs through tenant-scoped queries; validate requests explicitly and use safe error responses and bounded timeouts. Do not infer approval, ownership, or permissions from client-supplied values alone.</rule>
   </security_and_tenancy>
 
   <testing_and_delivery>
