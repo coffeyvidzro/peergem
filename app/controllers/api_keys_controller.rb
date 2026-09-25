@@ -15,7 +15,7 @@ class ApiKeysController < ApiController
     return if performed?
 
     authorize merchant, :manage_api_keys?
-    result = ApiKeys::Issue.call(
+    result = Merchants::ApiKeys::Issue.call(
       merchant: merchant,
       created_by: current_session.user,
       attributes: api_key_params
@@ -55,7 +55,7 @@ class ApiKeysController < ApiController
     return if performed?
 
     authorize merchant, :manage_api_keys?
-    result = ApiKeys::Rotate.call(api_key: find_api_key, rotated_by: current_session.user)
+    result = Merchants::ApiKeys::Rotate.call(api_key: find_api_key, rotated_by: current_session.user)
     render json: {
       api_key: ApiKeySerializer.call(result.api_key, secret: result.secret)
     }, status: :created

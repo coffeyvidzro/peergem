@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module ApiKeys
+module Merchants::ApiKeys
   class Rotate
     def self.call(api_key:, rotated_by:)
       api_key.with_lock do

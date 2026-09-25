@@ -15,21 +15,12 @@ class MerchantMembershipsController < ApiController
     return if performed?
 
     authorize merchant, :manage_owners?
-    membership = merchant.with_lock do
-      record = find_membership
-      changes = membership_changes
-      prevent_last_owner_change!(record, changes)
-      record.role = changes[:role] if changes.key?(:role)
-      record.status = changes[:status] if changes.key?(:status)
-      record.save!
-      Security::Events.record(
-        "merchant.membership_updated",
-        user: current_session.user,
-        merchant: merchant,
-        metadata: { membership_id: record.public_id, role: record.role, status: record.status }
-      )
-      record
-    end
+    membership = Merchants::Memberships::Update.call(
+      merchant: merchant,
+      membership: find_membership,
+      actor: current_session.user,
+      attributes: membership_changes
+    )
     render json: { membership: MerchantMembershipSerializer.call(membership) }
   end
 
@@ -37,17 +28,11 @@ class MerchantMembershipsController < ApiController
     return if performed?
 
     authorize merchant, :manage_owners?
-    merchant.with_lock do
-      membership = find_membership
-      prevent_last_owner_change!(membership, nil)
-      membership.destroy!
-      Security::Events.record(
-        "merchant.membership_removed",
-        user: current_session.user,
-        merchant: merchant,
-        metadata: { membership_id: membership.public_id }
-      )
-    end
+    Merchants::Memberships::Remove.call(
+      merchant: merchant,
+      membership: find_membership,
+      actor: current_session.user
+    )
     head :no_content
   end
 
@@ -55,17 +40,13 @@ class MerchantMembershipsController < ApiController
     return if performed?
 
     authorize merchant, :show?
-    merchant.with_lock do
-      membership = merchant.merchant_memberships.active.find_by!(user: current_session.user)
-      prevent_last_owner_change!(membership, nil)
-      membership.destroy!
-      Security::Events.record(
-        "merchant.membership_left",
-        user: current_session.user,
-        merchant: merchant,
-        metadata: { membership_id: membership.public_id }
-      )
-    end
+    membership = merchant.merchant_memberships.active.find_by!(user: current_session.user)
+    Merchants::Memberships::Remove.call(
+      merchant: merchant,
+      membership: membership,
+      actor: current_session.user,
+      leaving: true
+    )
     head :no_content
   end
 
@@ -85,16 +66,5 @@ class MerchantMembershipsController < ApiController
       changes[:role] = attributes[:role] if attributes.key?(:role)
       changes[:status] = attributes[:status] if attributes.key?(:status)
     end
-  end
-
-  def prevent_last_owner_change!(membership, changes)
-    return unless membership.role == "owner" && membership.status == "active"
-
-    remains_owner = changes && changes.fetch(:role, membership.role) == "owner" &&
-      changes.fetch(:status, membership.status) == "active"
-    return if remains_owner
-    return if merchant.merchant_memberships.active.where(role: "owner").where.not(id: membership.id).exists?
-
-    raise Pundit::NotAuthorizedError, "A merchant must retain an active owner"
   end
 end

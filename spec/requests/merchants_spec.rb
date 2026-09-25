@@ -78,7 +78,7 @@ RSpec.describe "Merchants and memberships" do
 
   it "rejects an invitation presented by a different email identity" do
     merchant = create_merchant
-    result = MerchantInvitations::Issue.call(merchant: merchant, invited_by: owner,
+    result = Merchants::Invitations::Issue.call(merchant: merchant, invited_by: owner,
       email: "invitee@example.com", role: "member")
     stranger = User.create!(email: "stranger@example.com")
     stranger_token = Session.issue(user: stranger).last
@@ -118,7 +118,7 @@ RSpec.describe "Merchants and memberships" do
 
   it "resends an invitation by revoking and replacing its token" do
     merchant = create_merchant
-    result = MerchantInvitations::Issue.call(
+    result = Merchants::Invitations::Issue.call(
       merchant: merchant, invited_by: owner, email: "invitee@example.com", role: "member"
     )
 

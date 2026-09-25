@@ -2,7 +2,7 @@
 
 class MerchantInvitationsController < ApiController
   before_action :require_session!
-  rescue_from MerchantInvitations::Accept::EmailMismatchError, with: :email_mismatch
+  rescue_from Merchants::Invitations::Accept::EmailMismatchError, with: :email_mismatch
 
   def index
     return if performed?
@@ -18,7 +18,7 @@ class MerchantInvitationsController < ApiController
     authorize merchant, :manage_members?
     attributes = invitation_params
     authorize merchant, :manage_owners? if attributes[:role] == "admin"
-    result = MerchantInvitations::Issue.call(
+    result = Merchants::Invitations::Issue.call(
       merchant: merchant,
       invited_by: current_session.user,
       **attributes
@@ -46,7 +46,7 @@ class MerchantInvitationsController < ApiController
   def accept
     return if performed?
 
-    membership = MerchantInvitations::Accept.call(
+    membership = Merchants::Invitations::Accept.call(
       user: current_session.user,
       token: params.require(:token)
     )
@@ -59,7 +59,7 @@ class MerchantInvitationsController < ApiController
     authorize merchant, :manage_members?
     invitation = merchant.merchant_invitations.active.find(invitation_id)
     authorize merchant, :manage_owners? if invitation.role == "admin"
-    result = MerchantInvitations::Resend.call(
+    result = Merchants::Invitations::Resend.call(
       invitation: invitation,
       resent_by: current_session.user
     )

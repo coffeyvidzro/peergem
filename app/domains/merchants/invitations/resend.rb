@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module MerchantInvitations
+module Merchants::Invitations
   class Resend
     def self.call(invitation:, resent_by:)
       invitation.with_lock do

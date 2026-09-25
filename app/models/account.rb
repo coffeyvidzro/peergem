@@ -16,49 +16,12 @@ class Account < ApplicationRecord
   validates :credit_balance, presence: true, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
   validates :payout_delay, presence: true
 
-  # Computes standard checkout application fees (e.g., 5% + 50 Pesewas base)
-  # @param amount_in_pesewas [Integer] Gross checkout price volume
-  # @return [Integer] PeerGem's dynamic cut calculated in Pesewas
+  # Fee calculations are merchant-account configuration, not ledger balances.
   def calculate_fee_in_pesewas(amount_in_pesewas)
-    bps, fixed, _ = active_fee_tier
-
-    gross_bd = BigDecimal(amount_in_pesewas.to_s)
-    bps_bd   = BigDecimal(bps.to_s)
-    fixed_bd = BigDecimal(fixed.to_s)
-
-    # Percentage component: amount * (bps / 10,000)
-    variable_cut = gross_bd * (bps_bd / BigDecimal("10000"))
-    total_fee    = variable_cut + fixed_bd
-
-    peergem_round(total_fee)
+    Accounts::Fees.checkout(account: self, amount_in_pesewas: amount_in_pesewas)
   end
 
-  # Computes recurring billing subscription platform fees
-  # @param amount_in_pesewas [Integer] Invoice billing item volume
-  # @return [Integer] PeerGem's subscription platform cut in Pesewas
   def calculate_subscription_fee_in_pesewas(amount_in_pesewas)
-    _, _, sub_bps = active_fee_tier
-
-    gross_bd = BigDecimal(amount_in_pesewas.to_s)
-    bps_bd   = BigDecimal(sub_bps.to_s)
-
-    variable_cut = gross_bd * (bps_bd / BigDecimal("10000"))
-    peergem_round(variable_cut)
-  end
-
-  private
-
-  # Decouples contractual overrides from platform base parameters
-  def active_fee_tier
-    [
-      platform_fee_percent || DEFAULT_PLATFORM_FEE_BPS,
-      platform_fee_fixed || DEFAULT_PLATFORM_FIXED_PESEWAS,
-      platform_subscription_fee_percent || DEFAULT_SUBSCRIPTION_FEE_BPS
-    ]
-  end
-
-  # Financial Rounding: standard rounding to nearest whole integer pesewa
-  def peergem_round(value)
-    value.round(0, BigDecimal::ROUND_HALF_UP).to_i
+    Accounts::Fees.subscription(account: self, amount_in_pesewas: amount_in_pesewas)
   end
 end
